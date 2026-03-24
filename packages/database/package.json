@@ -19,8 +19,12 @@
   },
   "devDependencies": {
     "@i18n-chat/config": "workspace:*",
+    "argon2": "^0.43.0",
     "prisma": "^6.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
+  },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
   }
 }
