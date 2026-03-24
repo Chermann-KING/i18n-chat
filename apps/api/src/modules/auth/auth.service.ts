@@ -6,6 +6,7 @@ import type { TAuthTokens } from '@i18n-chat/dto';
 import { createHash } from 'crypto';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser, JwtAccessPayload } from './interfaces/jwt-payload.interface';
 
 /** Access token lifetime in seconds (15 minutes). */
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -52,12 +54,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateTokenPair({
+    const tokens = await this.generateTokenPair({
       id: user.id,
       email: user.email,
       role: user.role as unknown as AuthenticatedUser['role'],
       isActive: user.isActive,
     });
+
+    await this.audit.log({
+      userId: user.id,
+      action: 'auth.login',
+      entityType: 'User',
+      entityId: user.id,
+    });
+
+    return tokens;
   }
 
   /**
@@ -108,6 +119,13 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+
+    await this.audit.log({
+      userId,
+      action: 'auth.logout',
+      entityType: 'User',
+      entityId: userId,
     });
   }
 

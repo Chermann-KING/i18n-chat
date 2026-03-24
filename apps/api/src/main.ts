@@ -1,16 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { PinoLoggerService } from './common/logger/pino-logger.service';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 /**
  * Application bootstrap function.
  * Initialises the NestJS application, configures Swagger, and starts listening.
  */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
-    // Pino logger will be configured in Phase 7 (Observability)
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  // ─── Structured logger (Pino) ─────────────────────────────────────────────
+  const logger = new PinoLoggerService();
+  app.useLogger(logger);
+
+  // ─── Global exception filter ──────────────────────────────────────────────
+  app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
   app.setGlobalPrefix('api/v1');
 

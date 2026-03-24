@@ -87,7 +87,7 @@ export class TemplateController {
    * Creates a new template (admin only).
    *
    * @param body - Validated creation payload.
-   * @param user - The authenticated admin user creating the template.
+   * @param actor - The authenticated admin creating the template.
    */
   @Post()
   @Roles(UserRole.ADMIN)
@@ -95,9 +95,9 @@ export class TemplateController {
   @ApiResponse({ status: 201, description: 'Created template' })
   create(
     @Body(new ZodValidationPipe(CreateTemplateSchema)) body: TCreateTemplate,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TTemplateResponse> {
-    return this.templateService.create(body, user.id);
+    return this.templateService.create(body, actor.id);
   }
 
   /**
@@ -105,6 +105,7 @@ export class TemplateController {
    *
    * @param id - UUID of the template to update.
    * @param body - Validated update payload.
+   * @param actor - The authenticated admin performing the action.
    */
   @Patch(':id')
   @Roles(UserRole.ADMIN)
@@ -114,14 +115,16 @@ export class TemplateController {
   update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdateTemplateSchema)) body: TUpdateTemplate,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TTemplateResponse> {
-    return this.templateService.update(id, body);
+    return this.templateService.update(id, body, actor.id);
   }
 
   /**
    * Soft-deletes a template (admin only).
    *
    * @param id - UUID of the template to deactivate.
+   * @param actor - The authenticated admin performing the action.
    */
   @Delete(':id')
   @Roles(UserRole.ADMIN)
@@ -129,8 +132,8 @@ export class TemplateController {
   @ApiOperation({ summary: 'Deactivate a template (admin only)' })
   @ApiResponse({ status: 204, description: 'Template deactivated' })
   @ApiResponse({ status: 404, description: 'Template not found' })
-  async delete(@Param('id') id: string): Promise<void> {
-    await this.templateService.delete(id);
+  async delete(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser): Promise<void> {
+    await this.templateService.delete(id, actor.id);
   }
 
   /**
@@ -139,6 +142,7 @@ export class TemplateController {
    * @param id - UUID of the parent template.
    * @param languageCode - ISO 639-1 code for the translation language.
    * @param body - Validated translation payload.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Put(':id/translations/:languageCode')
   @ApiOperation({ summary: 'Upsert a template translation' })
@@ -149,8 +153,9 @@ export class TemplateController {
     @Param('languageCode') languageCode: string,
     @Body(new ZodValidationPipe(CreateTranslationSchema.omit({ languageCode: true })))
     body: Omit<TCreateTranslation, 'languageCode'>,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TTranslationResponse> {
-    return this.templateService.upsertTranslation(id, { ...body, languageCode });
+    return this.templateService.upsertTranslation(id, { ...body, languageCode }, actor.id);
   }
 
   /**
@@ -159,6 +164,7 @@ export class TemplateController {
    * @param id - UUID of the parent template.
    * @param languageCode - ISO 639-1 code for the translation language.
    * @param body - Partial translation fields to update.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Patch(':id/translations/:languageCode')
   @ApiOperation({ summary: 'Partially update a template translation' })
@@ -167,8 +173,9 @@ export class TemplateController {
     @Param('id') id: string,
     @Param('languageCode') languageCode: string,
     @Body(new ZodValidationPipe(UpdateTranslationSchema)) body: TUpdateTranslation,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TTranslationResponse> {
-    return this.templateService.upsertTranslation(id, { ...body, languageCode });
+    return this.templateService.upsertTranslation(id, { ...body, languageCode }, actor.id);
   }
 
   /**
@@ -176,6 +183,7 @@ export class TemplateController {
    *
    * @param id - UUID of the parent template.
    * @param languageCode - ISO 639-1 code of the translation to delete.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Delete(':id/translations/:languageCode')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -185,7 +193,8 @@ export class TemplateController {
   async deleteTranslation(
     @Param('id') id: string,
     @Param('languageCode') languageCode: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<void> {
-    await this.templateService.deleteTranslation(id, languageCode);
+    await this.templateService.deleteTranslation(id, languageCode, actor.id);
   }
 }

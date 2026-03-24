@@ -15,6 +15,7 @@ import type {
   TUpdateTranslation,
 } from '@i18n-chat/dto';
 import { TemplateRepository } from './template.repository';
+import { AuditService } from '../audit/audit.service';
 
 /**
  * Business logic for template management.
@@ -24,7 +25,10 @@ import { TemplateRepository } from './template.repository';
  */
 @Injectable()
 export class TemplateService {
-  constructor(private readonly repository: TemplateRepository) {}
+  constructor(
+    private readonly repository: TemplateRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Returns a paginated list of templates.
@@ -85,6 +89,15 @@ export class TemplateService {
         defaultValue: v.defaultValue,
       })),
     });
+
+    await this.audit.log({
+      userId: createdById,
+      action: 'template.created',
+      entityType: 'Template',
+      entityId: template.id,
+      metadata: { slug: template.slug, category: template.category },
+    });
+
     return this.toResponse(template);
   }
 
@@ -93,13 +106,23 @@ export class TemplateService {
    *
    * @param id - UUID of the template to update.
    * @param data - Validated update payload.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no template with the given ID exists.
    */
-  async update(id: string, data: TUpdateTemplate): Promise<TTemplateResponse> {
+  async update(id: string, data: TUpdateTemplate, actorId: string): Promise<TTemplateResponse> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Template', id);
 
     const template = await this.repository.update(id, data);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.updated',
+      entityType: 'Template',
+      entityId: id,
+      metadata: { changedFields: Object.keys(data) },
+    });
+
     return this.toResponse(template);
   }
 
@@ -107,12 +130,20 @@ export class TemplateService {
    * Soft-deletes a template (sets `isActive = false`).
    *
    * @param id - UUID of the template to deactivate.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no template with the given ID exists.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actorId: string): Promise<void> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Template', id);
     await this.repository.delete(id);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.deleted',
+      entityType: 'Template',
+      entityId: id,
+    });
   }
 
   /**
@@ -120,12 +151,14 @@ export class TemplateService {
    *
    * @param templateId - UUID of the parent template.
    * @param data - Validated translation payload.
+   * @param actorId - UUID of the staff user performing the action.
    * @returns The resulting translation.
    * @throws {NotFoundException} When no template with the given ID exists.
    */
   async upsertTranslation(
     templateId: string,
     data: TCreateTranslation | (TUpdateTranslation & { languageCode: string }),
+    actorId: string,
   ): Promise<TTranslationResponse> {
     const exists = await this.repository.findById(templateId);
     if (!exists) throw new NotFoundException('Template', templateId);
@@ -137,6 +170,15 @@ export class TemplateService {
       waTemplateName: data.waTemplateName,
       waTemplateCategory: data.waTemplateCategory,
     });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.translation.upserted',
+      entityType: 'TemplateTranslation',
+      entityId: translation.id,
+      metadata: { templateId, languageCode: translation.languageCode },
+    });
+
     return this.toTranslationResponse(translation);
   }
 
@@ -145,9 +187,14 @@ export class TemplateService {
    *
    * @param templateId - UUID of the parent template.
    * @param languageCode - ISO 639-1 code of the translation to remove.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When the template or translation does not exist.
    */
-  async deleteTranslation(templateId: string, languageCode: string): Promise<void> {
+  async deleteTranslation(
+    templateId: string,
+    languageCode: string,
+    actorId: string,
+  ): Promise<void> {
     const exists = await this.repository.findById(templateId);
     if (!exists) throw new NotFoundException('Template', templateId);
 
@@ -155,6 +202,14 @@ export class TemplateService {
     if (!translation) throw new NotFoundException('TemplateTranslation', languageCode);
 
     await this.repository.deleteTranslation(templateId, languageCode);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.translation.deleted',
+      entityType: 'TemplateTranslation',
+      entityId: translation.id,
+      metadata: { templateId, languageCode },
+    });
   }
 
   /**

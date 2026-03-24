@@ -5,6 +5,7 @@ import { UserRole } from '@prisma/client';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { UserService } from './user.service';
 
 // Jest hoists jest.mock() calls automatically — placing after imports is safe.
@@ -38,7 +39,11 @@ describe('UserService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService, { provide: PrismaService, useValue: { user: userMock } }],
+      providers: [
+        UserService,
+        { provide: PrismaService, useValue: { user: userMock } },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+      ],
     }).compile();
 
     service = module.get<UserService>(UserService);
@@ -93,12 +98,15 @@ describe('UserService', () => {
       jest.mocked(argon2.hash).mockResolvedValue('hashed-password');
       jest.spyOn(prisma.user, 'create').mockResolvedValue(mockUser);
 
-      const result = await service.create({
-        email: 'admin@example.com',
-        password: 'Admin1234!',
-        role: undefined,
-        preferredLanguageCode: 'fr',
-      });
+      const result = await service.create(
+        {
+          email: 'admin@example.com',
+          password: 'Admin1234!',
+          role: undefined,
+          preferredLanguageCode: 'fr',
+        },
+        'actor-uuid',
+      );
 
       expect(result.email).toBe(mockUser.email);
       expect(prisma.user.create).toHaveBeenCalledWith(
@@ -117,7 +125,7 @@ describe('UserService', () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
       jest.spyOn(prisma.user, 'update').mockResolvedValue(updated);
 
-      const result = await service.update(mockUser.id, { email: 'new@example.com' });
+      const result = await service.update(mockUser.id, { email: 'new@example.com' }, 'actor-uuid');
 
       expect(result.email).toBe('new@example.com');
     });
@@ -127,7 +135,7 @@ describe('UserService', () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
       jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
 
-      await service.update(mockUser.id, { password: 'NewPass123!' });
+      await service.update(mockUser.id, { password: 'NewPass123!' }, 'actor-uuid');
 
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -139,7 +147,7 @@ describe('UserService', () => {
     it('throws NotFoundException for an unknown ID', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.update('unknown', { email: 'x@x.com' })).rejects.toThrow(
+      await expect(service.update('unknown', { email: 'x@x.com' }, 'actor-uuid')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -152,7 +160,7 @@ describe('UserService', () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
       jest.spyOn(prisma.user, 'update').mockResolvedValue({ ...mockUser, isActive: false });
 
-      await service.delete(mockUser.id);
+      await service.delete(mockUser.id, 'actor-uuid');
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
@@ -163,7 +171,7 @@ describe('UserService', () => {
     it('throws NotFoundException for an unknown ID', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.delete('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('unknown', 'actor-uuid')).rejects.toThrow(NotFoundException);
     });
   });
 });

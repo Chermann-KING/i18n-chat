@@ -16,6 +16,7 @@ import { TemplateRepository } from '../template/template.repository';
 import { TranslationService } from '../template/translation.service';
 import { LibreTranslateService } from '../translation/libre-translate.service';
 import { DispatchProducer } from './dispatch.producer';
+import { AuditService } from '../audit/audit.service';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -88,30 +89,26 @@ function buildMessageRepoMock(): jest.Mocked<MessageRepository> {
 
 function buildRecipientRepoMock(): jest.Mocked<RecipientRepository> {
   return {
-    findManyByIds: jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: RECIPIENT_ID,
-          fullName: 'Alice',
-          preferredLanguageCode: 'fr',
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]),
-    findChannelsBatch: jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 'ch-uuid',
-          recipientId: RECIPIENT_ID,
-          channel: MessageChannel.EMAIL,
-          contact: 'alice@example.com',
-          isActive: true,
-          createdAt: new Date(),
-        },
-      ]),
+    findManyByIds: jest.fn().mockResolvedValue([
+      {
+        id: RECIPIENT_ID,
+        fullName: 'Alice',
+        preferredLanguageCode: 'fr',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]),
+    findChannelsBatch: jest.fn().mockResolvedValue([
+      {
+        id: 'ch-uuid',
+        recipientId: RECIPIENT_ID,
+        channel: MessageChannel.EMAIL,
+        contact: 'alice@example.com',
+        isActive: true,
+        createdAt: new Date(),
+      },
+    ]),
   } as unknown as jest.Mocked<RecipientRepository>;
 }
 
@@ -165,6 +162,7 @@ async function buildService(
       { provide: TranslationService, useValue: translationSvc },
       { provide: LibreTranslateService, useValue: libretranslate },
       { provide: DispatchProducer, useValue: producer },
+      { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
     ],
   }).compile();
 

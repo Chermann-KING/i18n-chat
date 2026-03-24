@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { NotFoundException } from '@i18n-chat/domain';
 import type { TCreateLanguage, TLanguageResponse, TUpdateLanguage } from '@i18n-chat/dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 /**
  * Business logic for language management.
@@ -11,7 +12,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
  */
 @Injectable()
 export class LanguageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Returns all languages, optionally including inactive ones.
@@ -42,10 +46,21 @@ export class LanguageService {
    * Creates a new language entry.
    *
    * @param data - Code and label for the new language.
+   * @param actorId - UUID of the admin performing the action.
    * @returns The persisted language.
    */
-  async create(data: TCreateLanguage): Promise<TLanguageResponse> {
-    return this.prisma.language.create({ data });
+  async create(data: TCreateLanguage, actorId: string): Promise<TLanguageResponse> {
+    const language = await this.prisma.language.create({ data });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'language.created',
+      entityType: 'Language',
+      entityId: language.code,
+      metadata: { code: language.code, label: language.label },
+    });
+
+    return language;
   }
 
   /**
@@ -53,22 +68,41 @@ export class LanguageService {
    *
    * @param code - ISO code of the language to update.
    * @param data - Fields to update (all optional).
+   * @param actorId - UUID of the admin performing the action.
    * @returns The updated language.
    * @throws {NotFoundException} When no language with the given code exists.
    */
-  async update(code: string, data: TUpdateLanguage): Promise<TLanguageResponse> {
+  async update(code: string, data: TUpdateLanguage, actorId: string): Promise<TLanguageResponse> {
     await this.findByCode(code);
-    return this.prisma.language.update({ where: { code }, data });
+    const language = await this.prisma.language.update({ where: { code }, data });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'language.updated',
+      entityType: 'Language',
+      entityId: code,
+      metadata: { changedFields: Object.keys(data) },
+    });
+
+    return language;
   }
 
   /**
    * Permanently removes a language entry.
    *
    * @param code - ISO code of the language to delete.
+   * @param actorId - UUID of the admin performing the action.
    * @throws {NotFoundException} When no language with the given code exists.
    */
-  async delete(code: string): Promise<void> {
+  async delete(code: string, actorId: string): Promise<void> {
     await this.findByCode(code);
     await this.prisma.language.delete({ where: { code } });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'language.deleted',
+      entityType: 'Language',
+      entityId: code,
+    });
   }
 }

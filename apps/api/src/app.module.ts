@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
+import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
 import { LanguageModule } from './modules/language/language.module';
@@ -20,10 +23,16 @@ import { TranslationModule } from './modules/translation/translation.module';
  * Global providers:
  * - {@link JwtAuthGuard} — protects every route by default; bypass with `@Public()`.
  * - {@link RolesGuard} — enforces `@Roles()` metadata when present.
+ * - {@link CorrelationIdInterceptor} — attaches a UUID to every request/response.
  *
  * Global modules:
  * - {@link PrismaModule} — makes `PrismaService` available everywhere.
+ * - {@link AuditModule} — makes `AuditService` available everywhere.
  * - `ScheduleModule` — enables `@Cron()` decorators across the application.
+ * - `ThrottlerModule` — rate-limits all endpoints (10 req / 60 s per IP).
+ *   NOTE: uses in-memory storage by default. Replace with
+ *   `ThrottlerStorageRedisService` from `@nestjs-throttler-storage-redis`
+ *   for multi-instance deployments.
  */
 @Module({
   imports: [
@@ -32,7 +41,9 @@ import { TranslationModule } from './modules/translation/translation.module';
       envFilePath: ['.env.local', '.env'],
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
     PrismaModule,
+    AuditModule,
     AuthModule,
     DispatchModule,
     LanguageModule,
@@ -45,6 +56,7 @@ import { TranslationModule } from './modules/translation/translation.module';
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: CorrelationIdInterceptor },
   ],
 })
 export class AppModule {}

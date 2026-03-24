@@ -7,6 +7,7 @@ import type { User, RefreshToken } from '@prisma/client';
 import { createHash } from 'crypto';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { AuthService } from './auth.service';
 
 // Jest hoists jest.mock() calls automatically — placing after imports is safe.
@@ -79,6 +80,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: { getOrThrow: jest.fn().mockReturnValue('test-secret') },
+        },
+        {
+          provide: AuditService,
+          useValue: { log: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

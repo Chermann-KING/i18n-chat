@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import type { User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 /**
  * Business logic for staff user management.
@@ -15,7 +16,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
  */
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Returns all staff users, ordered by creation date (newest first).
@@ -41,9 +45,10 @@ export class UserService {
    * Creates a new staff user with a hashed password.
    *
    * @param data - Validated user creation payload.
+   * @param actorId - UUID of the admin performing the action.
    * @returns The created user (without password hash).
    */
-  async create(data: TCreateUser): Promise<TUserResponse> {
+  async create(data: TCreateUser, actorId: string): Promise<TUserResponse> {
     const passwordHash = await argon2.hash(data.password);
     const user = await this.prisma.user.create({
       data: {
@@ -53,6 +58,15 @@ export class UserService {
         preferredLanguageCode: data.preferredLanguageCode ?? 'fr',
       },
     });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'user.created',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: { email: user.email, role: user.role },
+    });
+
     return this.toResponse(user);
   }
 
@@ -63,10 +77,11 @@ export class UserService {
    *
    * @param id - UUID of the user to update.
    * @param data - Validated update payload (all fields optional).
+   * @param actorId - UUID of the admin performing the action.
    * @returns The updated user.
    * @throws {NotFoundException} When no user with the given ID exists.
    */
-  async update(id: string, data: TUpdateUser): Promise<TUserResponse> {
+  async update(id: string, data: TUpdateUser, actorId: string): Promise<TUserResponse> {
     await this.findById(id);
 
     const updateData: Partial<{
@@ -85,6 +100,15 @@ export class UserService {
     if (data.password !== undefined) updateData.passwordHash = await argon2.hash(data.password);
 
     const user = await this.prisma.user.update({ where: { id }, data: updateData });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'user.updated',
+      entityType: 'User',
+      entityId: id,
+      metadata: { changedFields: Object.keys(updateData) },
+    });
+
     return this.toResponse(user);
   }
 
@@ -95,11 +119,19 @@ export class UserService {
    * audit logs via foreign keys.
    *
    * @param id - UUID of the user to deactivate.
+   * @param actorId - UUID of the admin performing the action.
    * @throws {NotFoundException} When no user with the given ID exists.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actorId: string): Promise<void> {
     await this.findById(id);
     await this.prisma.user.update({ where: { id }, data: { isActive: false } });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'user.deleted',
+      entityType: 'User',
+      entityId: id,
+    });
   }
 
   /**

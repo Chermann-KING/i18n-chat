@@ -24,6 +24,7 @@ import { DispatchRepository } from './dispatch.repository';
 import { MessageRepository } from './message.repository';
 import { DispatchProducer } from './dispatch.producer';
 import type { DeliveryJobData } from './queue.constants';
+import { AuditService } from '../audit/audit.service';
 
 /** A message entity paired with its delivery queue job payload. */
 interface MessageQueueItem {
@@ -47,6 +48,7 @@ export class DispatchService {
     private readonly translationSvc: TranslationService,
     private readonly libretranslate: LibreTranslateService,
     private readonly producer: DispatchProducer,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -73,6 +75,14 @@ export class DispatchService {
 
     await this.dispatchRepo.updateStatus(dispatch.id, DispatchStatus.QUEUED);
     await this.producer.enqueueAll(items);
+
+    await this.audit.log({
+      userId,
+      action: 'dispatch.created',
+      entityType: 'Dispatch',
+      entityId: dispatch.id,
+      metadata: { recipientMode: dispatch.recipientMode, messageCount: items.length },
+    });
 
     return this.toResponse(dispatch, items.length);
   }

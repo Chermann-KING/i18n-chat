@@ -23,6 +23,8 @@ import type {
 } from '@i18n-chat/dto';
 import { AddChannelSchema, CreateRecipientSchema, UpdateRecipientSchema } from '@i18n-chat/dto';
 import type { PagedResult } from '@i18n-chat/domain';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { CsvImportResult } from './recipient.service';
 import { RecipientService } from './recipient.service';
@@ -79,14 +81,16 @@ export class RecipientController {
    * Creates a new recipient, optionally with initial channel contacts.
    *
    * @param body - Validated creation payload.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Post()
   @ApiOperation({ summary: 'Create a recipient' })
   @ApiResponse({ status: 201, description: 'Created recipient' })
   create(
     @Body(new ZodValidationPipe(CreateRecipientSchema)) body: TCreateRecipient,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TRecipientResponse> {
-    return this.recipientService.create(body);
+    return this.recipientService.create(body, actor.id);
   }
 
   /**
@@ -94,6 +98,7 @@ export class RecipientController {
    *
    * @param id - UUID of the recipient to update.
    * @param body - Validated update payload.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Patch(':id')
   @ApiOperation({ summary: 'Update a recipient' })
@@ -102,22 +107,24 @@ export class RecipientController {
   update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdateRecipientSchema)) body: TUpdateRecipient,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TRecipientResponse> {
-    return this.recipientService.update(id, body);
+    return this.recipientService.update(id, body, actor.id);
   }
 
   /**
    * Soft-deletes a recipient (sets `isActive = false`).
    *
    * @param id - UUID of the recipient to deactivate.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a recipient' })
   @ApiResponse({ status: 204, description: 'Recipient deactivated' })
   @ApiResponse({ status: 404, description: 'Recipient not found' })
-  async delete(@Param('id') id: string): Promise<void> {
-    await this.recipientService.delete(id);
+  async delete(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser): Promise<void> {
+    await this.recipientService.delete(id, actor.id);
   }
 
   /**
@@ -125,6 +132,7 @@ export class RecipientController {
    *
    * @param id - Recipient UUID.
    * @param body - Channel type and contact value.
+   * @param actor - The authenticated staff user performing the action.
    */
   @Post(':id/channels')
   @ApiOperation({ summary: 'Add a contact channel to a recipient' })
@@ -133,8 +141,9 @@ export class RecipientController {
   addChannel(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(AddChannelSchema)) body: TAddChannel,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TRecipientChannelResponse> {
-    return this.recipientService.addChannel(id, body);
+    return this.recipientService.addChannel(id, body, actor.id);
   }
 
   /**
@@ -142,14 +151,19 @@ export class RecipientController {
    *
    * @param id - Recipient UUID.
    * @param channel - Channel type to remove (e.g. `EMAIL`).
+   * @param actor - The authenticated staff user performing the action.
    */
   @Delete(':id/channels/:channel')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a contact channel from a recipient' })
   @ApiResponse({ status: 204, description: 'Channel removed' })
   @ApiResponse({ status: 404, description: 'Recipient not found' })
-  async removeChannel(@Param('id') id: string, @Param('channel') channel: string): Promise<void> {
-    await this.recipientService.removeChannel(id, channel);
+  async removeChannel(
+    @Param('id') id: string,
+    @Param('channel') channel: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.recipientService.removeChannel(id, channel, actor.id);
   }
 
   /**

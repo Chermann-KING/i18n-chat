@@ -7,6 +7,7 @@ import {
   type RecipientEntity,
 } from '@i18n-chat/domain';
 import { RecipientRepository } from './recipient.repository';
+import { AuditService } from '../audit/audit.service';
 import { RecipientService } from './recipient.service';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -48,7 +49,11 @@ describe('RecipientService', () => {
     } as unknown as jest.Mocked<RecipientRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RecipientService, { provide: RecipientRepository, useValue: repositoryMock }],
+      providers: [
+        RecipientService,
+        { provide: RecipientRepository, useValue: repositoryMock },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+      ],
     }).compile();
 
     service = module.get<RecipientService>(RecipientService);
@@ -94,10 +99,13 @@ describe('RecipientService', () => {
     it('creates a recipient without channels', async () => {
       jest.spyOn(repository, 'create').mockResolvedValue(mockRecipient);
 
-      const result = await service.create({
-        fullName: 'Amina Benali',
-        preferredLanguageCode: 'fr',
-      });
+      const result = await service.create(
+        {
+          fullName: 'Amina Benali',
+          preferredLanguageCode: 'fr',
+        },
+        'actor-uuid',
+      );
 
       expect(result.fullName).toBe('Amina Benali');
       expect(result.channels).toHaveLength(0);
@@ -107,11 +115,14 @@ describe('RecipientService', () => {
       jest.spyOn(repository, 'create').mockResolvedValue(mockRecipient);
       jest.spyOn(repository, 'addChannel').mockResolvedValue(mockChannel);
 
-      const result = await service.create({
-        fullName: 'Amina Benali',
-        preferredLanguageCode: 'fr',
-        channels: [{ channel: MessageChannel.EMAIL, contact: 'amina@example.com' }],
-      });
+      const result = await service.create(
+        {
+          fullName: 'Amina Benali',
+          preferredLanguageCode: 'fr',
+          channels: [{ channel: MessageChannel.EMAIL, contact: 'amina@example.com' }],
+        },
+        'actor-uuid',
+      );
 
       expect(result.channels).toHaveLength(1);
       expect(repository.addChannel).toHaveBeenCalledTimes(1);
@@ -125,7 +136,7 @@ describe('RecipientService', () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockRecipient);
       jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
 
-      await service.delete('recipient-uuid');
+      await service.delete('recipient-uuid', 'actor-uuid');
 
       expect(repository.delete).toHaveBeenCalledWith('recipient-uuid');
     });
@@ -133,7 +144,7 @@ describe('RecipientService', () => {
     it('throws NotFoundException for unknown ID', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(null);
 
-      await expect(service.delete('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('unknown', 'actor-uuid')).rejects.toThrow(NotFoundException);
     });
   });
 

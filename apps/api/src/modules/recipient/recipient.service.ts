@@ -15,6 +15,7 @@ import type {
   TUpdateRecipient,
 } from '@i18n-chat/dto';
 import { RecipientRepository } from './recipient.repository';
+import { AuditService } from '../audit/audit.service';
 
 /** Result of a bulk CSV recipient import. */
 export interface CsvImportResult {
@@ -31,7 +32,10 @@ export interface CsvImportResult {
  */
 @Injectable()
 export class RecipientService {
-  constructor(private readonly repository: RecipientRepository) {}
+  constructor(
+    private readonly repository: RecipientRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Returns a paginated list of recipients.
@@ -61,8 +65,9 @@ export class RecipientService {
    * Creates a new recipient, optionally with initial channel contacts.
    *
    * @param data - Validated creation payload.
+   * @param actorId - UUID of the staff user performing the action.
    */
-  async create(data: TCreateRecipient): Promise<TRecipientResponse> {
+  async create(data: TCreateRecipient, actorId: string): Promise<TRecipientResponse> {
     const recipient = await this.repository.create({
       fullName: data.fullName,
       preferredLanguageCode: data.preferredLanguageCode,
@@ -81,6 +86,14 @@ export class RecipientService {
       channelEntities.push(...created);
     }
 
+    await this.audit.log({
+      userId: actorId,
+      action: 'recipient.created',
+      entityType: 'Recipient',
+      entityId: recipient.id,
+      metadata: { fullName: recipient.fullName, channelCount: channelEntities.length },
+    });
+
     return this.toResponse(recipient, channelEntities);
   }
 
@@ -89,14 +102,24 @@ export class RecipientService {
    *
    * @param id - UUID of the recipient to update.
    * @param data - Validated update payload.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no recipient with the given ID exists.
    */
-  async update(id: string, data: TUpdateRecipient): Promise<TRecipientResponse> {
+  async update(id: string, data: TUpdateRecipient, actorId: string): Promise<TRecipientResponse> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Recipient', id);
 
     const recipient = await this.repository.update(id, data);
     const channels = await this.repository.findChannels(id);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'recipient.updated',
+      entityType: 'Recipient',
+      entityId: id,
+      metadata: { changedFields: Object.keys(data) },
+    });
+
     return this.toResponse(recipient, channels);
   }
 
@@ -104,12 +127,20 @@ export class RecipientService {
    * Soft-deletes a recipient (sets `isActive = false`).
    *
    * @param id - UUID of the recipient to deactivate.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no recipient with the given ID exists.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actorId: string): Promise<void> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Recipient', id);
     await this.repository.delete(id);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'recipient.deleted',
+      entityType: 'Recipient',
+      entityId: id,
+    });
   }
 
   /**
@@ -117,9 +148,14 @@ export class RecipientService {
    *
    * @param id - UUID of the recipient.
    * @param data - Channel type and contact value.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no recipient with the given ID exists.
    */
-  async addChannel(id: string, data: TAddChannel): Promise<TRecipientChannelResponse> {
+  async addChannel(
+    id: string,
+    data: TAddChannel,
+    actorId: string,
+  ): Promise<TRecipientChannelResponse> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Recipient', id);
 
@@ -127,6 +163,15 @@ export class RecipientService {
       channel: data.channel as unknown as MessageChannel,
       contact: data.contact,
     });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'recipient.channel.added',
+      entityType: 'RecipientChannel',
+      entityId: channel.id,
+      metadata: { recipientId: id, channel: data.channel },
+    });
+
     return this.toChannelResponse(channel);
   }
 
@@ -135,12 +180,21 @@ export class RecipientService {
    *
    * @param id - UUID of the recipient.
    * @param channel - The channel type to remove.
+   * @param actorId - UUID of the staff user performing the action.
    * @throws {NotFoundException} When no recipient with the given ID exists.
    */
-  async removeChannel(id: string, channel: string): Promise<void> {
+  async removeChannel(id: string, channel: string, actorId: string): Promise<void> {
     const exists = await this.repository.findById(id);
     if (!exists) throw new NotFoundException('Recipient', id);
     await this.repository.removeChannel(id, channel as unknown as MessageChannel);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'recipient.channel.removed',
+      entityType: 'Recipient',
+      entityId: id,
+      metadata: { channel },
+    });
   }
 
   /**

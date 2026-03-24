@@ -11,6 +11,8 @@ import { LanguageService } from './language.service';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
+const MOCK_USER = { id: 'admin-uuid', email: 'admin@example.com', role: 'ADMIN', isActive: true };
+
 const FR: TLanguageResponse = { code: 'fr', label: 'Français', isActive: true };
 const NL: TLanguageResponse = { code: 'nl', label: 'Nederlands', isActive: true };
 
@@ -39,6 +41,11 @@ describe('LanguageController (e2e)', () => {
       .compile();
 
     app = module.createNestApplication();
+    app.use((_req: unknown, _res: unknown, next: () => void) => {
+      const req = _req as { user: typeof MOCK_USER };
+      req.user = MOCK_USER;
+      next();
+    });
     await app.init();
   });
 

@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@i18n-chat/domain';
 import type { Language } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { LanguageService } from './language.service';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ describe('LanguageService', () => {
       providers: [
         LanguageService,
         { provide: PrismaService, useValue: { language: languageMock } },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
@@ -87,7 +89,7 @@ describe('LanguageService', () => {
     it('creates and returns a new language', async () => {
       jest.spyOn(prisma.language, 'create').mockResolvedValue(mockFr);
 
-      const result = await service.create({ code: 'fr', label: 'Français' });
+      const result = await service.create({ code: 'fr', label: 'Français' }, 'actor-uuid');
 
       expect(result).toEqual(mockFr);
       expect(prisma.language.create).toHaveBeenCalledWith(
@@ -104,7 +106,7 @@ describe('LanguageService', () => {
       jest.spyOn(prisma.language, 'findUnique').mockResolvedValue(mockFr);
       jest.spyOn(prisma.language, 'update').mockResolvedValue(updated);
 
-      const result = await service.update('fr', { label: 'Français (mis à jour)' });
+      const result = await service.update('fr', { label: 'Français (mis à jour)' }, 'actor-uuid');
 
       expect(result.label).toBe('Français (mis à jour)');
     });
@@ -112,7 +114,9 @@ describe('LanguageService', () => {
     it('throws NotFoundException when the language does not exist', async () => {
       jest.spyOn(prisma.language, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.update('xx', { label: 'X' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('xx', { label: 'X' }, 'actor-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -123,7 +127,7 @@ describe('LanguageService', () => {
       jest.spyOn(prisma.language, 'findUnique').mockResolvedValue(mockFr);
       jest.spyOn(prisma.language, 'delete').mockResolvedValue(mockFr);
 
-      await service.delete('fr');
+      await service.delete('fr', 'actor-uuid');
 
       expect(prisma.language.delete).toHaveBeenCalledWith({ where: { code: 'fr' } });
     });
@@ -131,7 +135,7 @@ describe('LanguageService', () => {
     it('throws NotFoundException when the language does not exist', async () => {
       jest.spyOn(prisma.language, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.delete('xx')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('xx', 'actor-uuid')).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -7,6 +7,7 @@ import {
   type TemplateTranslationEntity,
 } from '@i18n-chat/domain';
 import { TemplateRepository } from './template.repository';
+import { AuditService } from '../audit/audit.service';
 import { TemplateService } from './template.service';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -58,7 +59,11 @@ describe('TemplateService', () => {
     } as unknown as jest.Mocked<TemplateRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TemplateService, { provide: TemplateRepository, useValue: repoMock }],
+      providers: [
+        TemplateService,
+        { provide: TemplateRepository, useValue: repoMock },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+      ],
     }).compile();
 
     service = module.get<TemplateService>(TemplateService);
@@ -110,7 +115,7 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockTemplate);
       jest.spyOn(repository, 'update').mockResolvedValue(updated);
 
-      const result = await service.update('tpl-uuid', { category: 'medical' });
+      const result = await service.update('tpl-uuid', { category: 'medical' }, 'actor-uuid');
 
       expect(result.category).toBe('medical');
     });
@@ -118,7 +123,9 @@ describe('TemplateService', () => {
     it('throws NotFoundException for unknown ID', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(null);
 
-      await expect(service.update('unknown', { category: 'x' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('unknown', { category: 'x' }, 'actor-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -129,7 +136,7 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockTemplate);
       jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
 
-      await service.delete('tpl-uuid');
+      await service.delete('tpl-uuid', 'actor-uuid');
 
       expect(repository.delete).toHaveBeenCalledWith('tpl-uuid');
     });
@@ -137,7 +144,7 @@ describe('TemplateService', () => {
     it('throws NotFoundException for unknown ID', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(null);
 
-      await expect(service.delete('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('unknown', 'actor-uuid')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -148,10 +155,14 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockTemplate);
       jest.spyOn(repository, 'upsertTranslation').mockResolvedValue(mockTranslation);
 
-      const result = await service.upsertTranslation('tpl-uuid', {
-        languageCode: 'fr',
-        body: 'Bonjour {{prenom}}',
-      });
+      const result = await service.upsertTranslation(
+        'tpl-uuid',
+        {
+          languageCode: 'fr',
+          body: 'Bonjour {{prenom}}',
+        },
+        'actor-uuid',
+      );
 
       expect(result.languageCode).toBe('fr');
     });
@@ -165,7 +176,7 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'findTranslation').mockResolvedValue(mockTranslation);
       jest.spyOn(repository, 'deleteTranslation').mockResolvedValue(undefined);
 
-      await service.deleteTranslation('tpl-uuid', 'fr');
+      await service.deleteTranslation('tpl-uuid', 'fr', 'actor-uuid');
 
       expect(repository.deleteTranslation).toHaveBeenCalledWith('tpl-uuid', 'fr');
     });
@@ -174,7 +185,9 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockTemplate);
       jest.spyOn(repository, 'findTranslation').mockResolvedValue(null);
 
-      await expect(service.deleteTranslation('tpl-uuid', 'de')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteTranslation('tpl-uuid', 'de', 'actor-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

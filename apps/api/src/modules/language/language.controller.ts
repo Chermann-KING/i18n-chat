@@ -15,6 +15,8 @@ import type { TCreateLanguage, TLanguageResponse, TUpdateLanguage } from '@i18n-
 import { CreateLanguageSchema, UpdateLanguageSchema } from '@i18n-chat/dto';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { LanguageService } from './language.service';
 
@@ -58,6 +60,7 @@ export class LanguageController {
    * Creates a new language (admin only).
    *
    * @param body - Validated language payload.
+   * @param actor - The authenticated admin performing the action.
    */
   @Post()
   @Roles(UserRole.ADMIN)
@@ -66,8 +69,9 @@ export class LanguageController {
   @ApiResponse({ status: 403, description: 'Forbidden — admin role required' })
   create(
     @Body(new ZodValidationPipe(CreateLanguageSchema)) body: TCreateLanguage,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TLanguageResponse> {
-    return this.languageService.create(body);
+    return this.languageService.create(body, actor.id);
   }
 
   /**
@@ -75,6 +79,7 @@ export class LanguageController {
    *
    * @param code - ISO code of the language to update.
    * @param body - Validated update payload.
+   * @param actor - The authenticated admin performing the action.
    */
   @Patch(':code')
   @Roles(UserRole.ADMIN)
@@ -84,14 +89,16 @@ export class LanguageController {
   update(
     @Param('code') code: string,
     @Body(new ZodValidationPipe(UpdateLanguageSchema)) body: TUpdateLanguage,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<TLanguageResponse> {
-    return this.languageService.update(code, body);
+    return this.languageService.update(code, body, actor.id);
   }
 
   /**
    * Deletes a language (admin only).
    *
    * @param code - ISO code of the language to delete.
+   * @param actor - The authenticated admin performing the action.
    */
   @Delete(':code')
   @Roles(UserRole.ADMIN)
@@ -99,7 +106,10 @@ export class LanguageController {
   @ApiOperation({ summary: 'Delete a language (admin only)' })
   @ApiResponse({ status: 204, description: 'Language deleted' })
   @ApiResponse({ status: 404, description: 'Language not found' })
-  async delete(@Param('code') code: string): Promise<void> {
-    await this.languageService.delete(code);
+  async delete(
+    @Param('code') code: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.languageService.delete(code, actor.id);
   }
 }
