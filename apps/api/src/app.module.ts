@@ -7,6 +7,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
+import { LanguageModule } from './modules/language/language.module';
+import { UserModule } from './modules/user/user.module';
+import { RecipientModule } from './modules/recipient/recipient.module';
+import { TemplateModule } from './modules/template/template.module';
 
 /**
  * Root application module.
@@ -29,6 +33,10 @@ import { DispatchModule } from './modules/dispatch/dispatch.module';
     PrismaModule,
     AuthModule,
     DispatchModule,
+    LanguageModule,
+    UserModule,
+    RecipientModule,
+    TemplateModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
