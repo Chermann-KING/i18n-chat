@@ -1,0 +1,40 @@
+{
+  "name": "i18n-chat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multilingual message dispatch platform for public-sector institutions",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@i18n-chat/config": "workspace:*",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.31.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "argon2",
+      "msgpackr-extract",
+      "prisma",
+      "unrs-resolver"
+    ]
+  }
+}

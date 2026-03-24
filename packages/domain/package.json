@@ -1,0 +1,17 @@
+{
+  "name": "@i18n-chat/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Domain layer: enums, exceptions, port interfaces. Zero infrastructure imports.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@i18n-chat/config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue.",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "confirm": "Confirmer"
+  },
+  "nav": {
+    "dispatch": "Nouveaux envois",
+    "history": "Historique",
+    "templates": "Modèles",
+    "recipients": "Destinataires",
+    "settings": "Paramètres",
+    "logout": "Déconnexion"
+  },
+  "auth": {
+    "login": "Connexion",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "submit": "Se connecter"
+  }
+}

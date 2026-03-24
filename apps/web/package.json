@@ -1,0 +1,35 @@
+{
+  "name": "@i18n-chat/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js 15 staff-facing interface",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3000",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@i18n-chat/domain": "workspace:*",
+    "@i18n-chat/dto": "workspace:*",
+    "lucide-react": "^0.475.0",
+    "next": "^15.2.3",
+    "next-intl": "^3.26.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@i18n-chat/config": "workspace:*",
+    "@types/node": "^22.13.9",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.2.3",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
+}

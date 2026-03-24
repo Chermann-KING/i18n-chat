@@ -1,0 +1,12 @@
+# Force LF line endings for all text files (consistent across Windows/Linux/macOS)
+* text=auto eol=lf
+
+# Explicitly declare binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

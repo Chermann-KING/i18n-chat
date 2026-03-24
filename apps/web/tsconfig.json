@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@i18n-chat/domain": ["../../packages/domain/src"],
+      "@i18n-chat/dto": ["../../packages/dto/src"]
+    },
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "references": [{ "path": "../../packages/domain" }, { "path": "../../packages/dto" }],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

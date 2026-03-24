@@ -1,0 +1,26 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "error": "An error occurred.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "dispatch": "New dispatch",
+    "history": "History",
+    "templates": "Templates",
+    "recipients": "Recipients",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "auth": {
+    "login": "Sign in",
+    "email": "Email address",
+    "password": "Password",
+    "submit": "Sign in"
+  }
+}

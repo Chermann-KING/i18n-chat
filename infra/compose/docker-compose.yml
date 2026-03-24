@@ -1,0 +1,64 @@
+name: i18n-chat
+
+services:
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: i18n_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: i18n_user
+      POSTGRES_PASSWORD: i18n_pass
+      POSTGRES_DB: i18n_chat
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/01-pgcrypto.sql:/docker-entrypoint-initdb.d/01-pgcrypto.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U i18n_user -d i18n_chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: i18n_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── LibreTranslate ─────────────────────────────────────────────────────────
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: i18n_libretranslate
+    restart: unless-stopped
+    environment:
+      LT_LOAD_ONLY: "ar,en,es,fr,nl,pl,ro,tr"
+      LT_DISABLE_WEB_UI: "true"
+      LT_API_KEYS: "false"
+    ports:
+      - "5000:5000"
+    volumes:
+      - libretranslate_data:/home/libretranslate/.local/share
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/languages || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  postgres_data:
+  redis_data:
+  libretranslate_data:
