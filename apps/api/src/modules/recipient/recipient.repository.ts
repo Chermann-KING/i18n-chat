@@ -101,6 +101,28 @@ export class RecipientRepository implements IRecipientRepository {
   }
 
   /**
+   * Returns multiple recipients by their UUIDs in a single query.
+   *
+   * @param ids - Array of recipient UUIDs to look up.
+   */
+  async findManyByIds(ids: string[]): Promise<RecipientEntity[]> {
+    const rows = await this.prisma.recipient.findMany({ where: { id: { in: ids } } });
+    return rows.map((r) => this.toEntity(r));
+  }
+
+  /**
+   * Returns all active channels for a set of recipients in a single query.
+   *
+   * @param recipientIds - Array of recipient UUIDs.
+   */
+  async findChannelsBatch(recipientIds: string[]): Promise<RecipientChannelEntity[]> {
+    const rows = await this.prisma.recipientChannel.findMany({
+      where: { recipientId: { in: recipientIds }, isActive: true },
+    });
+    return rows.map((r) => this.toChannelEntity(r));
+  }
+
+  /**
    * Maps a Prisma `Recipient` row to a domain {@link RecipientEntity}.
    */
   private toEntity(row: Recipient): RecipientEntity {
