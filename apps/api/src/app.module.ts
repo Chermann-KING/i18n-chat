@@ -1,9 +1,23 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { PrismaModule } from './common/prisma/prisma.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { AuthModule } from './modules/auth/auth.module';
+import { DispatchModule } from './modules/dispatch/dispatch.module';
 
 /**
  * Root application module.
- * Feature modules will be imported here as they are implemented (Phase 3+).
+ *
+ * Global providers:
+ * - {@link JwtAuthGuard} — protects every route by default; bypass with `@Public()`.
+ * - {@link RolesGuard} — enforces `@Roles()` metadata when present.
+ *
+ * Global modules:
+ * - {@link PrismaModule} — makes `PrismaService` available everywhere.
+ * - `ScheduleModule` — enables `@Cron()` decorators across the application.
  */
 @Module({
   imports: [
@@ -11,6 +25,14 @@ import { ConfigModule } from '@nestjs/config';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    AuthModule,
+    DispatchModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

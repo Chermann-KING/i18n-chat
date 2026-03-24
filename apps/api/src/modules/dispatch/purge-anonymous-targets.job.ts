@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 /**
  * Scheduled job that permanently deletes expired anonymous targets.
@@ -17,7 +17,7 @@ import { PrismaClient } from '@prisma/client';
 export class PurgeAnonymousTargetsJob {
   private readonly logger = new Logger(PurgeAnonymousTargetsJob.name);
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Deletes all {@link AnonymousTarget} rows whose `purgeAt` date has passed.
