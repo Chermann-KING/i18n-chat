@@ -43,8 +43,9 @@ describe('AuthController (e2e)', () => {
 
     app = module.createNestApplication();
     // Inject a mock authenticated user so @CurrentUser() resolves in protected routes.
-    app.use((req: { user: unknown }, _res: unknown, next: () => void) => {
-      Object.assign(req, { user: MOCK_USER });
+    app.use((_req: unknown, _res: unknown, next: () => void) => {
+      const req = _req as { user: typeof MOCK_USER };
+      req.user = MOCK_USER;
       next();
     });
     await app.init();

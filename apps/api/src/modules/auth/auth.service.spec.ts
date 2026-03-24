@@ -1,7 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@i18n-chat/domain';
 import { UserRole } from '@prisma/client';
 import type { User, RefreshToken } from '@prisma/client';

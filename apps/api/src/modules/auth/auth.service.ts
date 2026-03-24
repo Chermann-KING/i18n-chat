@@ -55,7 +55,7 @@ export class AuthService {
     return this.generateTokenPair({
       id: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as unknown as AuthenticatedUser['role'],
       isActive: user.isActive,
     });
   }
@@ -92,7 +92,7 @@ export class AuthService {
     return this.generateTokenPair({
       id: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as unknown as AuthenticatedUser['role'],
       isActive: user.isActive,
     });
   }

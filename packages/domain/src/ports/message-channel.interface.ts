@@ -27,6 +27,12 @@ export interface SendMessagePayload {
    * Required when `waTemplateName` is set.
    */
   readonly waTemplateComponents?: string[];
+
+  /**
+   * ISO 639-1 language code of the message body.
+   * Used by WhatsApp template messages to select the correct approved translation.
+   */
+  readonly languageCode?: string;
 }
 
 /**

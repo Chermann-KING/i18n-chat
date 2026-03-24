@@ -11,6 +11,8 @@ import { LanguageModule } from './modules/language/language.module';
 import { UserModule } from './modules/user/user.module';
 import { RecipientModule } from './modules/recipient/recipient.module';
 import { TemplateModule } from './modules/template/template.module';
+import { ChannelModule } from './modules/channel/channel.module';
+import { TranslationModule } from './modules/translation/translation.module';
 
 /**
  * Root application module.
@@ -37,6 +39,8 @@ import { TemplateModule } from './modules/template/template.module';
     UserModule,
     RecipientModule,
     TemplateModule,
+    ChannelModule,
+    TranslationModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
