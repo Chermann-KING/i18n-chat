@@ -8,6 +8,68 @@
  * - Inferred type: `TCreateDispatch`
  */
 
-// Schemas will be added in Phase 2 (Domain & Shared Packages).
-// This barrel export is intentionally minimal at scaffold stage.
-export {};
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+export { LoginSchema, RefreshTokenSchema, AuthTokensSchema } from './auth.schema';
+export type { TLogin, TRefreshToken, TAuthTokens } from './auth.schema';
+
+// ─── User ──────────────────────────────────────────────────────────────────────
+export { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from './user.schema';
+export type { TCreateUser, TUpdateUser, TUserResponse } from './user.schema';
+
+// ─── Language ──────────────────────────────────────────────────────────────────
+export {
+  CreateLanguageSchema,
+  UpdateLanguageSchema,
+  LanguageResponseSchema,
+} from './language.schema';
+export type { TCreateLanguage, TUpdateLanguage, TLanguageResponse } from './language.schema';
+
+// ─── Recipient ─────────────────────────────────────────────────────────────────
+export {
+  CreateRecipientSchema,
+  UpdateRecipientSchema,
+  AddChannelSchema,
+  RecipientChannelInputSchema,
+  RecipientChannelResponseSchema,
+  RecipientResponseSchema,
+} from './recipient.schema';
+export type {
+  TCreateRecipient,
+  TUpdateRecipient,
+  TAddChannel,
+  TRecipientResponse,
+  TRecipientChannelResponse,
+} from './recipient.schema';
+
+// ─── Template ──────────────────────────────────────────────────────────────────
+export {
+  TemplateVariableSchema,
+  TemplateVariableResponseSchema,
+  CreateTemplateSchema,
+  UpdateTemplateSchema,
+  CreateTranslationSchema,
+  UpdateTranslationSchema,
+  TranslationResponseSchema,
+  TemplateResponseSchema,
+} from './template.schema';
+export type {
+  TCreateTemplate,
+  TUpdateTemplate,
+  TCreateTranslation,
+  TUpdateTranslation,
+  TTemplateResponse,
+  TTranslationResponse,
+  TTemplateVariable,
+} from './template.schema';
+
+// ─── Dispatch ──────────────────────────────────────────────────────────────────
+export {
+  DispatchTargetSchema,
+  CreateDispatchSchema,
+  DispatchResponseSchema,
+} from './dispatch.schema';
+export type { TCreateDispatch, TDispatchTarget, TDispatchResponse } from './dispatch.schema';
+
+// ─── Message ───────────────────────────────────────────────────────────────────
+export { MessageResponseSchema, MessageListResponseSchema } from './message.schema';
+export type { TMessageResponse, TMessageListResponse } from './message.schema';
