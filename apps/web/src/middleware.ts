@@ -11,5 +11,6 @@ import { routing } from './i18n/routing';
 export default createMiddleware(routing);
 
 export const config = {
-  matcher: ['/((?!_next|_vercel|.*\\..*).*)'],
+  // Exclude Next.js internals, static assets, and BFF API routes from locale detection.
+  matcher: ['/((?!_next|_vercel|api|.*\\..*).*)'],
 };
