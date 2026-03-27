@@ -7,7 +7,12 @@
     "delete": "Verwijderen",
     "edit": "Bewerken",
     "search": "Zoeken",
-    "confirm": "Bevestigen"
+    "confirm": "Bevestigen",
+    "actions": "Acties",
+    "noResults": "Geen resultaten.",
+    "add": "Toevoegen",
+    "create": "Aanmaken",
+    "back": "Terug"
   },
   "nav": {
     "dispatch": "Nieuwe verzendingen",
@@ -21,6 +26,64 @@
     "login": "Inloggen",
     "email": "E-mailadres",
     "password": "Wachtwoord",
-    "submit": "Inloggen"
+    "submit": "Inloggen",
+    "invalidCredentials": "Onjuist e-mailadres of wachtwoord.",
+    "loginError": "Er is een fout opgetreden. Probeer het opnieuw."
+  },
+  "recipients": {
+    "title": "Ontvangers",
+    "add": "Nieuwe ontvanger",
+    "name": "Naam",
+    "preferredLanguage": "Voorkeurstaal",
+    "channels": "Kanalen",
+    "email": "E-mail",
+    "phone": "Telefoon",
+    "whatsapp": "WhatsApp",
+    "deleteConfirm": "Deze ontvanger verwijderen?",
+    "addChannel": "Kanaal toevoegen",
+    "channelType": "Kanaaltype",
+    "channelValue": "Waarde"
+  },
+  "templates": {
+    "title": "Sjablonen",
+    "add": "Nieuw sjabloon",
+    "name": "Naam",
+    "slug": "Identificatie",
+    "fallbackLanguage": "Terugvaltaal",
+    "translations": "Vertalingen",
+    "subject": "Onderwerp",
+    "body": "Berichttekst",
+    "addTranslation": "Vertaling toevoegen",
+    "whatsappStatus": "WhatsApp-status",
+    "approved": "Goedgekeurd",
+    "pending": "In afwachting",
+    "rejected": "Afgewezen",
+    "deleteConfirm": "Dit sjabloon verwijderen?"
+  },
+  "dispatches": {
+    "title": "Verzendingsgeschiedenis",
+    "new": "Nieuwe verzending",
+    "status": "Status",
+    "template": "Sjabloon",
+    "recipients": "Ontvangers",
+    "createdAt": "Aanmaakdatum",
+    "exportCsv": "CSV exporteren",
+    "cancel": "Verzending annuleren",
+    "cancelConfirm": "Deze verzending annuleren?",
+    "preview": "Voorvertoning",
+    "step": {
+      "template": "Sjabloon kiezen",
+      "variables": "Variabelen invullen",
+      "recipients": "Ontvangers kiezen",
+      "review": "Controleren en verzenden"
+    },
+    "statuses": {
+      "DRAFT": "Concept",
+      "QUEUED": "In wachtrij",
+      "IN_PROGRESS": "Bezig",
+      "DONE": "Voltooid",
+      "CANCELLED": "Geannuleerd",
+      "FAILED": "Mislukt"
+    }
   }
 }

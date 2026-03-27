@@ -7,7 +7,12 @@
     "delete": "Delete",
     "edit": "Edit",
     "search": "Search",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "noResults": "No results.",
+    "add": "Add",
+    "create": "Create",
+    "back": "Back"
   },
   "nav": {
     "dispatch": "New dispatch",
@@ -21,6 +26,64 @@
     "login": "Sign in",
     "email": "Email address",
     "password": "Password",
-    "submit": "Sign in"
+    "submit": "Sign in",
+    "invalidCredentials": "Incorrect email or password.",
+    "loginError": "An error occurred. Please try again."
+  },
+  "recipients": {
+    "title": "Recipients",
+    "add": "New recipient",
+    "name": "Name",
+    "preferredLanguage": "Preferred language",
+    "channels": "Channels",
+    "email": "Email",
+    "phone": "Phone",
+    "whatsapp": "WhatsApp",
+    "deleteConfirm": "Delete this recipient?",
+    "addChannel": "Add channel",
+    "channelType": "Channel type",
+    "channelValue": "Value"
+  },
+  "templates": {
+    "title": "Templates",
+    "add": "New template",
+    "name": "Name",
+    "slug": "Identifier",
+    "fallbackLanguage": "Fallback language",
+    "translations": "Translations",
+    "subject": "Subject",
+    "body": "Message body",
+    "addTranslation": "Add translation",
+    "whatsappStatus": "WhatsApp status",
+    "approved": "Approved",
+    "pending": "Pending",
+    "rejected": "Rejected",
+    "deleteConfirm": "Delete this template?"
+  },
+  "dispatches": {
+    "title": "Dispatch history",
+    "new": "New dispatch",
+    "status": "Status",
+    "template": "Template",
+    "recipients": "Recipients",
+    "createdAt": "Created at",
+    "exportCsv": "Export CSV",
+    "cancel": "Cancel dispatch",
+    "cancelConfirm": "Cancel this dispatch?",
+    "preview": "Preview",
+    "step": {
+      "template": "Choose a template",
+      "variables": "Fill in variables",
+      "recipients": "Choose recipients",
+      "review": "Review and send"
+    },
+    "statuses": {
+      "DRAFT": "Draft",
+      "QUEUED": "Queued",
+      "IN_PROGRESS": "In progress",
+      "DONE": "Done",
+      "CANCELLED": "Cancelled",
+      "FAILED": "Failed"
+    }
   }
 }

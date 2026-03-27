@@ -7,7 +7,12 @@
     "delete": "Supprimer",
     "edit": "Modifier",
     "search": "Rechercher",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "actions": "Actions",
+    "noResults": "Aucun résultat.",
+    "add": "Ajouter",
+    "create": "Créer",
+    "back": "Retour"
   },
   "nav": {
     "dispatch": "Nouveaux envois",
@@ -21,6 +26,64 @@
     "login": "Connexion",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
-    "submit": "Se connecter"
+    "submit": "Se connecter",
+    "invalidCredentials": "Email ou mot de passe incorrect.",
+    "loginError": "Une erreur est survenue. Veuillez réessayer."
+  },
+  "recipients": {
+    "title": "Destinataires",
+    "add": "Nouveau destinataire",
+    "name": "Nom",
+    "preferredLanguage": "Langue préférée",
+    "channels": "Canaux",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "whatsapp": "WhatsApp",
+    "deleteConfirm": "Supprimer ce destinataire ?",
+    "addChannel": "Ajouter un canal",
+    "channelType": "Type de canal",
+    "channelValue": "Valeur"
+  },
+  "templates": {
+    "title": "Modèles",
+    "add": "Nouveau modèle",
+    "name": "Nom",
+    "slug": "Identifiant",
+    "fallbackLanguage": "Langue de secours",
+    "translations": "Traductions",
+    "subject": "Objet",
+    "body": "Corps du message",
+    "addTranslation": "Ajouter une traduction",
+    "whatsappStatus": "Statut WhatsApp",
+    "approved": "Approuvé",
+    "pending": "En attente",
+    "rejected": "Rejeté",
+    "deleteConfirm": "Supprimer ce modèle ?"
+  },
+  "dispatches": {
+    "title": "Historique des envois",
+    "new": "Nouvel envoi",
+    "status": "Statut",
+    "template": "Modèle",
+    "recipients": "Destinataires",
+    "createdAt": "Date de création",
+    "exportCsv": "Exporter CSV",
+    "cancel": "Annuler l'envoi",
+    "cancelConfirm": "Annuler cet envoi ?",
+    "preview": "Prévisualiser",
+    "step": {
+      "template": "Choisir un modèle",
+      "variables": "Remplir les variables",
+      "recipients": "Choisir les destinataires",
+      "review": "Vérifier et envoyer"
+    },
+    "statuses": {
+      "DRAFT": "Brouillon",
+      "QUEUED": "En file d'attente",
+      "IN_PROGRESS": "En cours",
+      "DONE": "Terminé",
+      "CANCELLED": "Annulé",
+      "FAILED": "Échoué"
+    }
   }
 }

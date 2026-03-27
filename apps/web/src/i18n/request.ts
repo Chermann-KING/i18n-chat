@@ -1,18 +1,20 @@
 import { getRequestConfig } from 'next-intl/server';
-
-/** Supported staff-interface locale codes. */
-export const SUPPORTED_LOCALES = ['fr', 'nl', 'en'] as const;
-export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+import type { AbstractIntlMessages } from 'next-intl';
+import { routing } from './routing';
 
 /**
  * next-intl server configuration.
- * Loads the message file matching the resolved locale.
+ * Loads the message file matching the resolved locale from the routing config.
  */
 export default getRequestConfig(async ({ requestLocale }) => {
-  const locale = (await requestLocale) ?? 'fr';
+  let locale = await requestLocale;
 
-  return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)) as Record<string, unknown>,
-  };
+  if (!locale || !routing.locales.includes(locale as (typeof routing.locales)[number])) {
+    locale = routing.defaultLocale;
+  }
+
+  const mod = await import(`../../messages/${locale}.json`);
+  const messages = (mod.default ?? mod) as AbstractIntlMessages;
+
+  return { locale, messages };
 });

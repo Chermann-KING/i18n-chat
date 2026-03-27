@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 
 /**
- * Root page — immediately redirects to the login page.
- * Authentication and routing are handled by the app layout in Phase 8.
+ * Root page — the middleware handles locale-prefixed redirects.
+ * This fallback covers any edge case where the middleware is bypassed.
  */
 export default function RootPage(): never {
-  redirect('/login');
+  redirect('/fr/login');
 }

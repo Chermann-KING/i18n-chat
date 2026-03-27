@@ -1,6 +1,7 @@
 /** @type {import('eslint').Linter.Config} */
 module.exports = {
   extends: ['next/core-web-vitals', 'prettier'],
+  ignorePatterns: ['e2e/**'],
   parserOptions: {
     project: './tsconfig.json',
     tsconfigRootDir: __dirname,
