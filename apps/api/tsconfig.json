@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
       "@i18n-chat/domain": ["../../packages/domain/src"],
