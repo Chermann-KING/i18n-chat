@@ -1,14 +1,7 @@
-import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import { ThemeProvider } from 'next-themes';
 import type { SupportedLocale } from '@/i18n/routing';
-import '../globals.css';
-
-export const metadata: Metadata = {
-  title: 'i18n-chat',
-  description: 'Multilingual message dispatch platform',
-};
+import { dirAttr } from '@/lib/rtl';
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -16,26 +9,19 @@ interface LocaleLayoutProps {
 }
 
 /**
- * Locale-scoped root layout.
- * Wraps every page with the NextIntl provider (messages) and
- * the next-themes ThemeProvider (light / dark mode).
+ * Locale-scoped layout.
+ * Sets the HTML lang attribute and provides next-intl messages.
+ * ThemeProvider lives in the root layout so it survives locale switches.
  */
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
   const { locale } = await params;
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages} locale={locale}>
+      <div lang={locale} dir={dirAttr(locale)} className="contents">
+        {children}
+      </div>
+    </NextIntlClientProvider>
   );
 }

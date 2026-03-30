@@ -23,7 +23,7 @@ export default async function RecipientsPage({ params }: RecipientsPageProps) {
   return (
     <>
       <Topbar locale={locale} title={t('recipients')} />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-4 sm:p-6">
         <RecipientsView />
       </main>
     </>

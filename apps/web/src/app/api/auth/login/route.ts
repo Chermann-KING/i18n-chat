@@ -5,7 +5,7 @@ import { API_ROUTES } from '@/lib/constants/api-routes';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/api-client';
 
 /** Cookie TTL constants (in seconds). */
-const ACCESS_TOKEN_MAX_AGE = 15 * 60; // 15 minutes
+const ACCESS_TOKEN_MAX_AGE = 4 * 60 * 60; // 4 hours
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
 
 /**
