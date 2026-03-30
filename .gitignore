@@ -20,6 +20,11 @@ build/
 
 # Prisma
 packages/database/prisma/generated/
+# Prisma-generated JS client (compiled output of `prisma generate`)
+packages/database/src/index.js
+packages/database/src/index.js.map
+packages/database/src/index.d.ts
+packages/database/src/index.d.ts.map
 
 # Logs
 *.log
