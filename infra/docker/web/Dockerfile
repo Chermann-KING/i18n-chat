@@ -19,7 +19,8 @@ RUN corepack enable && corepack prepare pnpm@10.31.0 --activate
 FROM base AS installer
 WORKDIR /repo
 
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
+# Root workspace files (.npmrc must be included — contains shamefully-hoist=true)
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
 
 COPY packages/config/package.json   packages/config/
 COPY packages/domain/package.json   packages/domain/
