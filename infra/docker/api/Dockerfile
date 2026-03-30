@@ -50,7 +50,7 @@ COPY --from=builder /repo/ .
 
 # Creates /deploy with a self-contained package.json + node_modules (prod only).
 # workspace:* deps are inlined automatically by pnpm deploy.
-RUN pnpm --filter @i18n-chat/api deploy --prod /deploy
+RUN pnpm --filter @i18n-chat/api deploy --prod --legacy /deploy
 
 # ─── Runner: minimal image, non-root user ────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS runner
