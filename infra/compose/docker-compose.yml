@@ -1,32 +1,51 @@
 name: i18n-chat
 
+# =============================================================================
+# On-premise production stack.
+# For local development, all runtime variables come from apps/api/.env and
+# apps/web/.env.local (not committed — see .env.example files).
+#
+# Quick start:
+#   docker compose -f infra/compose/docker-compose.yml up -d
+# =============================================================================
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
 
   # ─── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
+    <<: [*restart, *logging]
     image: postgres:16-alpine
     container_name: i18n_postgres
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: i18n_user
-      POSTGRES_PASSWORD: i18n_pass
-      POSTGRES_DB: i18n_chat
+      POSTGRES_USER:     ${POSTGRES_USER:-i18n_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-i18n_pass}
+      POSTGRES_DB:       ${POSTGRES_DB:-i18n_chat}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/01-pgcrypto.sql:/docker-entrypoint-initdb.d/01-pgcrypto.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U i18n_user -d i18n_chat"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-i18n_user} -d ${POSTGRES_DB:-i18n_chat}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # ─── Redis ──────────────────────────────────────────────────────────────────
   redis:
+    <<: [*restart, *logging]
     image: redis:7-alpine
     container_name: i18n_redis
-    restart: unless-stopped
     command: redis-server --save 60 1 --loglevel warning
     ports:
       - "6379:6379"
@@ -40,13 +59,13 @@ services:
 
   # ─── LibreTranslate ─────────────────────────────────────────────────────────
   libretranslate:
+    <<: [*restart, *logging]
     image: libretranslate/libretranslate:latest
     container_name: i18n_libretranslate
-    restart: unless-stopped
     environment:
-      LT_LOAD_ONLY: "ar,en,es,fr,nl,pl,ro,tr"
+      LT_LOAD_ONLY:    "ar,en,es,fr,nl,pl,ro,tr"
       LT_DISABLE_WEB_UI: "true"
-      LT_API_KEYS: "false"
+      LT_API_KEYS:     "false"
     ports:
       - "5000:5000"
     volumes:
@@ -58,18 +77,148 @@ services:
       retries: 5
       start_period: 60s
 
-  # ─── Mailpit (dev email catcher) ────────────────────────────────────────────
+  # ─── Mailpit (dev email catcher — remove in production) ─────────────────────
   mailpit:
+    <<: [*restart, *logging]
     image: axllent/mailpit:latest
     container_name: i18n_mailpit
-    restart: unless-stopped
     ports:
-      - "1025:1025"   # SMTP — reçoit les emails de l'API
-      - "8025:8025"   # UI web — http://localhost:8025
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI → http://localhost:8025
     environment:
-      MP_MAX_MESSAGES: 500
-      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_MAX_MESSAGES:            500
+      MP_SMTP_AUTH_ACCEPT_ANY:    "true"
       MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    profiles:
+      - dev
+
+  # ─── NestJS API ─────────────────────────────────────────────────────────────
+  api:
+    <<: [*restart, *logging]
+    build:
+      context: ../..
+      dockerfile: infra/docker/api/Dockerfile
+    image: i18n-chat-api:${IMAGE_TAG:-latest}
+    container_name: i18n_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      libretranslate:
+        condition: service_healthy
+    environment:
+      NODE_ENV:          production
+      PORT:              3001
+      DATABASE_URL:      postgresql://${POSTGRES_USER:-i18n_user}:${POSTGRES_PASSWORD:-i18n_pass}@postgres:5432/${POSTGRES_DB:-i18n_chat}
+      REDIS_URL:         redis://redis:6379
+      JWT_SECRET:        ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ENCRYPTION_KEY:    ${ENCRYPTION_KEY}
+      LIBRETRANSLATE_URL: http://libretranslate:5000
+      SMTP_HOST:         ${SMTP_HOST:-mailpit}
+      SMTP_PORT:         ${SMTP_PORT:-1025}
+      SMTP_USER:         ${SMTP_USER:-}
+      SMTP_PASS:         ${SMTP_PASS:-}
+      SMTP_FROM:         ${SMTP_FROM:-noreply@i18n-chat.local}
+      META_WHATSAPP_TOKEN:    ${META_WHATSAPP_TOKEN:-}
+      META_WHATSAPP_PHONE_ID: ${META_WHATSAPP_PHONE_ID:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      SMS_API_URL:       ${SMS_API_URL:-}
+      SMS_API_KEY:       ${SMS_API_KEY:-}
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ─── BullMQ Worker ──────────────────────────────────────────────────────────
+  # Same image as api — NestJS starts the queue consumers automatically.
+  # Scale this service independently from the HTTP API replicas.
+  worker:
+    <<: [*restart, *logging]
+    image: i18n-chat-api:${IMAGE_TAG:-latest}
+    container_name: i18n_worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      libretranslate:
+        condition: service_healthy
+    environment:
+      NODE_ENV:          production
+      APP_MODE:          worker
+      DATABASE_URL:      postgresql://${POSTGRES_USER:-i18n_user}:${POSTGRES_PASSWORD:-i18n_pass}@postgres:5432/${POSTGRES_DB:-i18n_chat}
+      REDIS_URL:         redis://redis:6379
+      JWT_SECRET:        ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ENCRYPTION_KEY:    ${ENCRYPTION_KEY}
+      LIBRETRANSLATE_URL: http://libretranslate:5000
+      SMTP_HOST:         ${SMTP_HOST:-mailpit}
+      SMTP_PORT:         ${SMTP_PORT:-1025}
+      SMTP_USER:         ${SMTP_USER:-}
+      SMTP_PASS:         ${SMTP_PASS:-}
+      SMTP_FROM:         ${SMTP_FROM:-noreply@i18n-chat.local}
+      META_WHATSAPP_TOKEN:    ${META_WHATSAPP_TOKEN:-}
+      META_WHATSAPP_PHONE_ID: ${META_WHATSAPP_PHONE_ID:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      SMS_API_URL:       ${SMS_API_URL:-}
+      SMS_API_KEY:       ${SMS_API_KEY:-}
+    # No ports exposed — worker only processes queues, no HTTP traffic
+
+  # ─── Next.js Web ────────────────────────────────────────────────────────────
+  web:
+    <<: [*restart, *logging]
+    build:
+      context: ../..
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+    image: i18n-chat-web:${IMAGE_TAG:-latest}
+    container_name: i18n_web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV:          production
+      PORT:              3000
+      NEXTAUTH_URL:      ${NEXTAUTH_URL:-http://localhost}
+      NEXTAUTH_SECRET:   ${NEXTAUTH_SECRET:-}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  # ─── Nginx reverse proxy ────────────────────────────────────────────────────
+  nginx:
+    <<: [*restart, *logging]
+    image: nginx:1.27-alpine
+    container_name: i18n_nginx
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERT_PATH:-./certs/tls.crt}:/etc/nginx/certs/tls.crt:ro
+      - ${TLS_KEY_PATH:-./certs/tls.key}:/etc/nginx/certs/tls.key:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - production
 
 volumes:
   postgres_data:

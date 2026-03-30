@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: i18n-chat
+  labels:
+    app: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          # Same image as api — NestJS BullMQ workers start automatically.
+          # APP_MODE=worker signals the app to skip the HTTP listener (optional
+          # enhancement — currently runs same entrypoint as api).
+          image: ghcr.io/YOUR_ORG/i18n-chat-api:latest   # overridden by CI
+          imagePullPolicy: Always
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: APP_MODE
+              value: worker
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: jwt-secret
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: jwt-refresh-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: encryption-key
+            - name: LIBRETRANSLATE_URL
+              value: http://libretranslate:5000
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-host
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-port
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-user
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-pass
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-from
+            - name: META_WHATSAPP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-whatsapp-token
+                  optional: true
+            - name: META_WHATSAPP_PHONE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-whatsapp-phone-id
+                  optional: true
+            - name: META_WEBHOOK_VERIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-webhook-verify-token
+                  optional: true
+            - name: SMS_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: sms-api-url
+                  optional: true
+            - name: SMS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: sms-api-key
+                  optional: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker-hpa
+  namespace: i18n-chat
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

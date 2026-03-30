@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: i18n-chat
+  labels:
+    app.kubernetes.io/name: i18n-chat
+    app.kubernetes.io/managed-by: kubectl

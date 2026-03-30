@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: libretranslate
+  namespace: i18n-chat
+  labels:
+    app: libretranslate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: libretranslate
+  template:
+    metadata:
+      labels:
+        app: libretranslate
+    spec:
+      containers:
+        - name: libretranslate
+          image: libretranslate/libretranslate:latest
+          env:
+            - name: LT_LOAD_ONLY
+              value: "ar,en,es,fr,nl,pl,ro,tr"
+            - name: LT_DISABLE_WEB_UI
+              value: "true"
+            - name: LT_API_KEYS
+              value: "false"
+          ports:
+            - containerPort: 5000
+          livenessProbe:
+            httpGet:
+              path: /languages
+              port: 5000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /languages
+              port: 5000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+            - name: lt-data
+              mountPath: /home/libretranslate/.local/share
+      volumes:
+        - name: lt-data
+          persistentVolumeClaim:
+            claimName: libretranslate-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: libretranslate-pvc
+  namespace: i18n-chat
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: libretranslate
+  namespace: i18n-chat
+  labels:
+    app: libretranslate
+spec:
+  selector:
+    app: libretranslate
+  ports:
+    - port: 5000
+      targetPort: 5000

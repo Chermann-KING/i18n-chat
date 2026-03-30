@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgcrypto-init
+  namespace: i18n-chat
+data:
+  # Copied from infra/compose/init/01-pgcrypto.sql
+  01-pgcrypto.sql: |
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;

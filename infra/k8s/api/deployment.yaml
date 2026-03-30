@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: i18n-chat
+  labels:
+    app: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      # Ensure pods land on different nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [api]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: api
+          image: ghcr.io/YOUR_ORG/i18n-chat-api:latest   # overridden by CI
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3001"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: jwt-secret
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: jwt-refresh-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: encryption-key
+            - name: LIBRETRANSLATE_URL
+              value: http://libretranslate:5000
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-host
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-port
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-user
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-pass
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: smtp-from
+            - name: META_WHATSAPP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-whatsapp-token
+                  optional: true
+            - name: META_WHATSAPP_PHONE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-whatsapp-phone-id
+                  optional: true
+            - name: META_WEBHOOK_VERIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: meta-webhook-verify-token
+                  optional: true
+            - name: SMS_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: sms-api-url
+                  optional: true
+            - name: SMS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: sms-api-key
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
