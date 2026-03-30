@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import {
   NotFoundException,
   type FindTemplatesOptions,
@@ -7,6 +7,7 @@ import {
   type TemplateTranslationEntity,
 } from '@i18n-chat/domain';
 import type {
+  TAddVariable,
   TCreateTemplate,
   TCreateTranslation,
   TTemplateResponse,
@@ -78,13 +79,21 @@ export class TemplateService {
    * @returns The persisted template with its variables.
    */
   async create(data: TCreateTemplate, createdById: string): Promise<TTemplateResponse> {
+    const existing = await this.repository.findBySlug(data.slug);
+    if (existing) throw new ConflictException(`A template with slug '${data.slug}' already exists`);
+
     const template = await this.repository.create({
+      name: data.name,
       slug: data.slug,
       category: data.category,
+      fallbackLanguageCode: data.fallbackLanguageCode,
       createdById,
       variables: data.variables?.map((v) => ({
         key: v.key,
         label: v.label,
+        type: v.type,
+        source: v.source,
+        recipientField: v.recipientField,
         isRequired: v.isRequired,
         defaultValue: v.defaultValue,
       })),
@@ -165,8 +174,10 @@ export class TemplateService {
 
     const translation = await this.repository.upsertTranslation(templateId, {
       languageCode: (data as { languageCode: string }).languageCode,
+      name: (data as { name?: string }).name,
       subject: data.subject,
       body: data.body ?? '',
+      variableLabels: (data as { variableLabels?: Record<string, string> }).variableLabels,
       waTemplateName: data.waTemplateName,
       waTemplateCategory: data.waTemplateCategory,
     });
@@ -213,13 +224,87 @@ export class TemplateService {
   }
 
   /**
+   * Adds a variable placeholder to a template.
+   *
+   * @param templateId - UUID of the parent template.
+   * @param data - Validated variable payload.
+   * @param actorId - UUID of the staff user performing the action.
+   * @throws {NotFoundException} When no template with the given ID exists.
+   */
+  async addVariable(
+    templateId: string,
+    data: TAddVariable,
+    actorId: string,
+  ): Promise<{ id: string; key: string; label: string; type: string; source: string; recipientField?: string; isRequired: boolean; defaultValue?: string }> {
+    const exists = await this.repository.findById(templateId, { includeVariables: true });
+    if (!exists) throw new NotFoundException('Template', templateId);
+
+    const duplicate = exists.variables?.some((v) => v.key === data.key);
+    if (duplicate) throw new BadRequestException(`Variable key '${data.key}' already exists on this template`);
+
+    const variable = await this.repository.addVariable(templateId, {
+      key: data.key,
+      label: data.label,
+      type: data.type,
+      source: data.source,
+      recipientField: data.recipientField,
+      isRequired: data.isRequired,
+      defaultValue: data.defaultValue,
+    });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.variable.added',
+      entityType: 'TemplateVariable',
+      entityId: variable.id,
+      metadata: { templateId, key: data.key },
+    });
+
+    return {
+      id: variable.id,
+      key: variable.key,
+      label: variable.label,
+      type: variable.type,
+      source: variable.source,
+      recipientField: variable.recipientField ?? undefined,
+      isRequired: variable.isRequired,
+      defaultValue: variable.defaultValue ?? undefined,
+    };
+  }
+
+  /**
+   * Removes a variable from a template.
+   *
+   * @param templateId - UUID of the parent template (for authorization check).
+   * @param variableId - UUID of the variable to remove.
+   * @param actorId - UUID of the staff user performing the action.
+   * @throws {NotFoundException} When no template with the given ID exists.
+   */
+  async deleteVariable(templateId: string, variableId: string, actorId: string): Promise<void> {
+    const exists = await this.repository.findById(templateId);
+    if (!exists) throw new NotFoundException('Template', templateId);
+
+    await this.repository.deleteVariable(variableId);
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'template.variable.deleted',
+      entityType: 'TemplateVariable',
+      entityId: variableId,
+      metadata: { templateId },
+    });
+  }
+
+  /**
    * Maps a domain {@link TemplateEntity} to the API response shape.
    */
   private toResponse(template: TemplateEntity): TTemplateResponse {
     return {
       id: template.id,
+      name: template.name,
       slug: template.slug,
       category: template.category,
+      fallbackLanguageCode: template.fallbackLanguageCode,
       isActive: template.isActive,
       createdAt: template.createdAt.toISOString(),
       updatedAt: template.updatedAt.toISOString(),
@@ -227,6 +312,9 @@ export class TemplateService {
         id: v.id,
         key: v.key,
         label: v.label,
+        type: v.type,
+        source: v.source,
+        recipientField: v.recipientField ?? undefined,
         isRequired: v.isRequired,
         defaultValue: v.defaultValue ?? undefined,
       })),
@@ -241,8 +329,10 @@ export class TemplateService {
     return {
       id: translation.id,
       languageCode: translation.languageCode,
+      name: translation.name ?? undefined,
       subject: translation.subject ?? undefined,
       body: translation.body,
+      variableLabels: translation.variableLabels ?? undefined,
       waTemplateName: translation.waTemplateName ?? undefined,
       waTemplateStatus:
         translation.waTemplateStatus as unknown as TTranslationResponse['waTemplateStatus'],

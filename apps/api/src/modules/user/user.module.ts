@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 import { UserController } from './user.controller';
+import { MeController } from './me.controller';
 import { UserService } from './user.service';
 
 /**
- * Provides staff user account management (admin-only CRUD).
+ * Provides staff user account management.
  *
- * `UserService` is exported so other modules can perform user lookups
- * without duplicating the persistence logic.
+ * - {@link UserController} — admin-only CRUD for all users.
+ * - {@link MeController} — self-service routes for the authenticated user.
+ * - `UserService` is exported so other modules can perform user lookups.
  */
 @Module({
-  controllers: [UserController],
+  controllers: [MeController, UserController],
   providers: [UserService],
   exports: [UserService],
 })

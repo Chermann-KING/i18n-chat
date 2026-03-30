@@ -1,22 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { apiPut, ApiError } from '@/lib/api-client';
+import { apiPost, ApiError } from '@/lib/api-client';
 import { API_ROUTES } from '@/lib/constants/api-routes';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-/**
- * POST /api/templates/:id/translations — upsert a translation.
- * Extracts `languageCode` from the body and forwards as PUT /:id/translations/:lang to NestJS.
- */
+/** POST /api/templates/:id/variables — add a variable to a template. */
 export async function POST(request: NextRequest, { params }: RouteContext): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const body = (await request.json()) as { languageCode: string; [key: string]: unknown };
-    const { languageCode, ...rest } = body;
-    const data = await apiPut(API_ROUTES.TEMPLATES.TRANSLATION(id, languageCode), rest);
+    const body = (await request.json()) as unknown;
+    const data = await apiPost(API_ROUTES.TEMPLATES.VARIABLES(id), body);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     if (error instanceof ApiError)

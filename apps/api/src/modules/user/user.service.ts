@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { NotFoundException } from '@i18n-chat/domain';
-import type { TCreateUser, TUpdateUser, TUserResponse } from '@i18n-chat/dto';
+import { AppException, NotFoundException } from '@i18n-chat/domain';
+import type {
+  TChangePassword,
+  TCreateUser,
+  TUpdateNotifications,
+  TUpdateProfile,
+  TUpdateUser,
+  TUserResponse,
+} from '@i18n-chat/dto';
 import * as argon2 from 'argon2';
 import type { User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
@@ -135,6 +142,86 @@ export class UserService {
   }
 
   /**
+   * Updates the authenticated user's own profile (name, preferred language).
+   *
+   * @param id - UUID of the authenticated user.
+   * @param data - Validated profile update payload.
+   */
+  async updateProfile(id: string, data: TUpdateProfile): Promise<TUserResponse> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.firstName !== undefined && { firstName: data.firstName }),
+        ...(data.lastName !== undefined && { lastName: data.lastName }),
+        ...(data.preferredLanguageCode !== undefined && {
+          preferredLanguageCode: data.preferredLanguageCode,
+        }),
+      },
+    });
+
+    await this.audit.log({
+      userId: id,
+      action: 'user.profile_updated',
+      entityType: 'User',
+      entityId: id,
+      metadata: { changedFields: Object.keys(data) },
+    });
+
+    return this.toResponse(user);
+  }
+
+  /**
+   * Changes the authenticated user's password after verifying the current one.
+   *
+   * @param id - UUID of the authenticated user.
+   * @param data - Current password (for verification) and new password.
+   * @throws {AppException} When the current password is incorrect.
+   */
+  async changePassword(id: string, data: TChangePassword): Promise<TUserResponse> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id } });
+
+    const isValid = await argon2.verify(user.passwordHash, data.currentPassword);
+    if (!isValid) {
+      throw new AppException('Current password is incorrect.', 'INVALID_CURRENT_PASSWORD', { id });
+    }
+
+    const passwordHash = await argon2.hash(data.newPassword);
+    const updated = await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+
+    await this.audit.log({
+      userId: id,
+      action: 'user.password_changed',
+      entityType: 'User',
+      entityId: id,
+    });
+
+    return this.toResponse(updated);
+  }
+
+  /**
+   * Updates the authenticated user's notification preferences.
+   *
+   * @param id - UUID of the authenticated user.
+   * @param data - Notification preference payload.
+   */
+  async updateNotifications(id: string, data: TUpdateNotifications): Promise<TUserResponse> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { notifyOnFailure: data.notifyOnFailure },
+    });
+
+    await this.audit.log({
+      userId: id,
+      action: 'user.notifications_updated',
+      entityType: 'User',
+      entityId: id,
+      metadata: { notifyOnFailure: data.notifyOnFailure },
+    });
+
+    return this.toResponse(user);
+  }
+
+  /**
    * Maps a Prisma `User` record to the API response shape.
    *
    * - Converts `Date` fields to ISO 8601 strings.
@@ -145,8 +232,11 @@ export class UserService {
     return {
       id: user.id,
       email: user.email,
+      firstName: user.firstName ?? null,
+      lastName: user.lastName ?? null,
       role: user.role as unknown as TUserResponse['role'],
       preferredLanguageCode: user.preferredLanguageCode,
+      notifyOnFailure: user.notifyOnFailure,
       isActive: user.isActive,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),

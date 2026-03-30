@@ -172,9 +172,9 @@ export class RecipientController {
    * The file must be sent as `multipart/form-data` with a field named `file`.
    * Expected CSV format:
    * ```
-   * fullName,preferredLanguageCode
-   * Amina Benali,fr
-   * Jan Peeters,nl
+   * firstName,lastName,preferredLanguageCode
+   * Amina,Benali,fr
+   * Jan,Peeters,nl
    * ```
    *
    * @param file - Uploaded CSV file.

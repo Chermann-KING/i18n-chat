@@ -14,7 +14,8 @@ import { RecipientService } from './recipient.service';
 
 const mockRecipient: RecipientEntity = {
   id: 'recipient-uuid',
-  fullName: 'Amina Benali',
+  firstName: 'Amina',
+  lastName: 'Benali',
   preferredLanguageCode: 'fr',
   isActive: true,
   createdAt: new Date('2026-01-01'),
@@ -69,7 +70,7 @@ describe('RecipientService', () => {
       const result = await service.findAll();
 
       expect(result.total).toBe(1);
-      expect(result.data[0]).toMatchObject({ id: 'recipient-uuid', fullName: 'Amina Benali' });
+      expect(result.data[0]).toMatchObject({ id: 'recipient-uuid', firstName: 'Amina', lastName: 'Benali' });
     });
   });
 
@@ -101,13 +102,15 @@ describe('RecipientService', () => {
 
       const result = await service.create(
         {
-          fullName: 'Amina Benali',
+          firstName: 'Amina',
+          lastName: 'Benali',
           preferredLanguageCode: 'fr',
         },
         'actor-uuid',
       );
 
-      expect(result.fullName).toBe('Amina Benali');
+      expect(result.firstName).toBe('Amina');
+      expect(result.lastName).toBe('Benali');
       expect(result.channels).toHaveLength(0);
     });
 
@@ -117,7 +120,8 @@ describe('RecipientService', () => {
 
       const result = await service.create(
         {
-          fullName: 'Amina Benali',
+          firstName: 'Amina',
+          lastName: 'Benali',
           preferredLanguageCode: 'fr',
           channels: [{ channel: MessageChannel.EMAIL, contact: 'amina@example.com' }],
         },
@@ -154,7 +158,7 @@ describe('RecipientService', () => {
     it('imports valid CSV rows', async () => {
       jest.spyOn(repository, 'create').mockResolvedValue(mockRecipient);
 
-      const csv = 'fullName,preferredLanguageCode\nAmina Benali,fr\nJan Peeters,nl\n';
+      const csv = 'firstName,lastName,preferredLanguageCode\nAmina,Benali,fr\nJan,Peeters,nl\n';
       const result = await service.importFromCsv(Buffer.from(csv, 'utf-8'));
 
       expect(result.imported).toBe(2);
@@ -162,7 +166,7 @@ describe('RecipientService', () => {
     });
 
     it('reports errors for malformed rows', async () => {
-      const csv = 'fullName,preferredLanguageCode\nBad Row\n';
+      const csv = 'firstName,lastName,preferredLanguageCode\nBadRow\n';
       const result = await service.importFromCsv(Buffer.from(csv, 'utf-8'));
 
       expect(result.imported).toBe(0);

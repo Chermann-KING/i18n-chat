@@ -15,6 +15,10 @@ export const API_ROUTES = {
   USERS: {
     BASE: `${API_BASE_URL}/users`,
     BY_ID: (id: string) => `${API_BASE_URL}/users/${id}`,
+    ME: `${API_BASE_URL}/users/me`,
+    ME_PROFILE: `${API_BASE_URL}/users/me/profile`,
+    ME_PASSWORD: `${API_BASE_URL}/users/me/password`,
+    ME_NOTIFICATIONS: `${API_BASE_URL}/users/me/notifications`,
   },
   LANGUAGES: {
     BASE: `${API_BASE_URL}/languages`,
@@ -29,15 +33,20 @@ export const API_ROUTES = {
   },
   TEMPLATES: {
     BASE: `${API_BASE_URL}/templates`,
+    CATEGORIES: `${API_BASE_URL}/templates/categories`,
     BY_ID: (id: string) => `${API_BASE_URL}/templates/${id}`,
     BY_SLUG: (slug: string) => `${API_BASE_URL}/templates/slug/${slug}`,
     TRANSLATIONS: (id: string) => `${API_BASE_URL}/templates/${id}/translations`,
     TRANSLATION: (id: string, lang: string) =>
       `${API_BASE_URL}/templates/${id}/translations/${lang}`,
+    VARIABLES: (id: string) => `${API_BASE_URL}/templates/${id}/variables`,
+    VARIABLE: (id: string, variableId: string) =>
+      `${API_BASE_URL}/templates/${id}/variables/${variableId}`,
   },
   DISPATCHES: {
     BASE: `${API_BASE_URL}/dispatches`,
     BY_ID: (id: string) => `${API_BASE_URL}/dispatches/${id}`,
+    MESSAGES: (id: string) => `${API_BASE_URL}/dispatches/${id}/messages`,
     PREVIEW: (id: string) => `${API_BASE_URL}/dispatches/${id}/preview`,
     CANCEL: (id: string) => `${API_BASE_URL}/dispatches/${id}/cancel`,
     CSV: `${API_BASE_URL}/dispatches/export`,

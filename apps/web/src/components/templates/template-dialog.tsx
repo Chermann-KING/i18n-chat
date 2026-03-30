@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMessages } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -20,13 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LanguageSelect } from '@/components/ui/language-select';
 import { bffGet, bffPost } from '@/lib/bff-client';
 import { BFF_ROUTES } from '@/lib/constants/bff-routes';
 import { QUERY_KEYS } from '@/lib/constants/query-keys';
 
 interface Language {
   code: string;
-  name: string;
+  label: string;
 }
 
 interface TemplateDialogProps {
@@ -41,10 +43,28 @@ interface TemplateDialogProps {
 export function TemplateDialog({ open, onClose, onCreated }: TemplateDialogProps) {
   const t = useTranslations('templates');
   const tc = useTranslations('common');
+  const messages = useMessages();
+  const categoryLabels = (messages.templates as { categories: Record<string, string> }).categories;
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [category, setCategory] = useState('');
   const [fallbackLanguageCode, setFallbackLanguageCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  function toSlug(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugEdited) setSlug(toSlug(value));
+  }
 
   const { data: languages } = useQuery<Language[]>({
     queryKey: QUERY_KEYS.languages.all(),
@@ -52,17 +72,30 @@ export function TemplateDialog({ open, onClose, onCreated }: TemplateDialogProps
     enabled: open,
   });
 
+  const { data: categories } = useQuery<string[]>({
+    queryKey: QUERY_KEYS.templates.categories(),
+    queryFn: () => bffGet<string[]>(BFF_ROUTES.TEMPLATES.CATEGORIES),
+    enabled: open,
+  });
+
   const mutation = useMutation({
-    mutationFn: () => bffPost(BFF_ROUTES.TEMPLATES.BASE, { name, slug, fallbackLanguageCode }),
+    mutationFn: () => bffPost(BFF_ROUTES.TEMPLATES.BASE, { name, slug, category, fallbackLanguageCode }),
     onSuccess: () => {
       setName('');
       setSlug('');
+      setSlugEdited(false);
+      setCategory('');
       setFallbackLanguageCode('');
       setError(null);
       onCreated();
     },
-    onError: () => setError(tc('error')),
+    onError: (err: unknown) => {
+      const status = (err as { status?: number })?.status;
+      setError(status === 409 ? t('slugConflict', { slug }) : tc('error'));
+    },
   });
+
+  const canSubmit = !!name && !!fallbackLanguageCode && !!category;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,34 +122,43 @@ export function TemplateDialog({ open, onClose, onCreated }: TemplateDialogProps
         >
           <div className="space-y-2">
             <Label htmlFor="tpl-name">{t('name')}</Label>
-            <Input id="tpl-name" required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tpl-slug">{t('slug')}</Label>
             <Input
-              id="tpl-slug"
+              id="tpl-name"
               required
-              value={slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-              placeholder="my-template"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
             />
+            {slug && (
+              <p className="text-xs text-muted-foreground">
+                {t('slug')} : <span className="font-mono">{slug}</span>
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label>{t('fallbackLanguage')}</Label>
-            <Select value={fallbackLanguageCode} onValueChange={setFallbackLanguageCode} required>
+            <Label>{t('category')}</Label>
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
-                {languages?.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.name} ({lang.code.toUpperCase()})
+                {categories?.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {categoryLabels[cat] ?? cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t('fallbackLanguage')}</Label>
+            <LanguageSelect
+              languages={languages ?? []}
+              value={fallbackLanguageCode}
+              onValueChange={setFallbackLanguageCode}
+              required
+            />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -125,7 +167,7 @@ export function TemplateDialog({ open, onClose, onCreated }: TemplateDialogProps
             <Button type="button" variant="outline" onClick={onClose}>
               {tc('cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending || !fallbackLanguageCode}>
+            <Button type="submit" disabled={mutation.isPending || !canSubmit}>
               {mutation.isPending ? '…' : tc('create')}
             </Button>
           </DialogFooter>

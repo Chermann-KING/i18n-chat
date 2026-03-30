@@ -16,8 +16,10 @@ const mockTranslation: TemplateTranslationEntity = {
   id: 'trans-uuid',
   templateId: 'tpl-uuid',
   languageCode: 'fr',
+  name: null,
   subject: 'Objet test',
   body: 'Bonjour {{prenom}}',
+  variableLabels: null,
   waTemplateName: null,
   waTemplateStatus: WaTemplateStatus.NOT_SUBMITTED,
   waTemplateCategory: null,
@@ -28,8 +30,10 @@ const mockTranslation: TemplateTranslationEntity = {
 
 const mockTemplate: TemplateEntity = {
   id: 'tpl-uuid',
+  name: 'Test Template',
   slug: 'test_template',
   category: 'administrative',
+  fallbackLanguageCode: 'en',
   createdById: 'user-uuid',
   isActive: true,
   createdAt: new Date('2026-01-01'),
@@ -96,7 +100,7 @@ describe('TemplateService', () => {
       jest.spyOn(repository, 'create').mockResolvedValue(mockTemplate);
 
       const result = await service.create(
-        { slug: 'test_template', category: 'administrative' },
+        { name: 'Test Template', slug: 'test_template', category: 'administrative', fallbackLanguageCode: 'en' },
         'user-uuid',
       );
 

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type {
+  TAddVariable,
   TCreateTemplate,
   TCreateTranslation,
   TTemplateResponse,
@@ -21,12 +22,14 @@ import type {
   TUpdateTranslation,
 } from '@i18n-chat/dto';
 import {
+  AddVariableSchema,
   CreateTemplateSchema,
   CreateTranslationSchema,
   UpdateTemplateSchema,
   UpdateTranslationSchema,
 } from '@i18n-chat/dto';
 import type { PagedResult } from '@i18n-chat/domain';
+import { TEMPLATE_CATEGORIES } from '@i18n-chat/domain';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -43,6 +46,19 @@ import { TemplateService } from './template.service';
 @Controller('templates')
 export class TemplateController {
   constructor(private readonly templateService: TemplateService) {}
+
+  /**
+   * Returns the fixed list of available template categories.
+   *
+   * The list is defined in `@i18n-chat/domain` as {@link TEMPLATE_CATEGORIES}.
+   * No authentication required — categories are read-only reference data.
+   */
+  @Get('categories')
+  @ApiOperation({ summary: 'List available template categories' })
+  @ApiResponse({ status: 200, description: 'Array of category slugs' })
+  getCategories(): readonly string[] {
+    return TEMPLATE_CATEGORIES;
+  }
 
   /**
    * Returns a paginated list of templates.
@@ -67,6 +83,7 @@ export class TemplateController {
       page: page !== undefined ? parseInt(page, 10) : undefined,
       limit: limit !== undefined ? parseInt(limit, 10) : undefined,
       includeVariables: true,
+      includeTranslations: true,
     });
   }
 
@@ -134,6 +151,47 @@ export class TemplateController {
   @ApiResponse({ status: 404, description: 'Template not found' })
   async delete(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser): Promise<void> {
     await this.templateService.delete(id, actor.id);
+  }
+
+  /**
+   * Adds a variable placeholder to a template.
+   *
+   * @param id - UUID of the parent template.
+   * @param body - Validated variable payload.
+   * @param actor - The authenticated staff user performing the action.
+   */
+  @Post(':id/variables')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Add a variable to a template (admin only)' })
+  @ApiResponse({ status: 201, description: 'Created variable' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  addVariable(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(AddVariableSchema)) body: TAddVariable,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.templateService.addVariable(id, body, actor.id);
+  }
+
+  /**
+   * Removes a variable from a template.
+   *
+   * @param id - UUID of the parent template.
+   * @param variableId - UUID of the variable to remove.
+   * @param actor - The authenticated staff user performing the action.
+   */
+  @Delete(':id/variables/:variableId')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a template variable (admin only)' })
+  @ApiResponse({ status: 204, description: 'Variable deleted' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  async deleteVariable(
+    @Param('id') id: string,
+    @Param('variableId') variableId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.templateService.deleteVariable(id, variableId, actor.id);
   }
 
   /**

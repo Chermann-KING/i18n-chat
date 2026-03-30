@@ -1,7 +1,10 @@
 /**
  * Lightweight fetch wrapper for client-side calls to the Next.js BFF `/api/*` routes.
  * Automatically includes credentials (HttpOnly cookies) and handles JSON (de)serialization.
- * Throws a `BffError` on non-2xx responses.
+ *
+ * On a 401 response the client is redirected to the login page — the session has
+ * expired and the server-side silent refresh has already been attempted (and failed).
+ * Throws a `BffError` on other non-2xx responses.
  */
 
 /** Structured error from the BFF layer. */
@@ -19,6 +22,13 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
 
+/** Redirects to `/login` preserving the current locale prefix. */
+function redirectToLogin(): void {
+  const segments = window.location.pathname.split('/');
+  const locale = segments[1] ?? 'fr';
+  window.location.replace(`/${locale}/auth/login`);
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options;
 
@@ -31,6 +41,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  if (response.status === 401) {
+    redirectToLogin();
+    // Return a never-resolving promise — the redirect is in flight.
+    return new Promise<never>(() => undefined);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText);

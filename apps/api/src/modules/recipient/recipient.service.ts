@@ -44,7 +44,7 @@ export class RecipientService {
    */
   async findAll(options?: FindRecipientsOptions): Promise<PagedResult<TRecipientResponse>> {
     const result = await this.repository.findAll(options);
-    return { data: result.data.map((r) => this.toResponse(r)), total: result.total };
+    return { data: result.data.map((r) => this.toResponse(r, r.channels)), total: result.total };
   }
 
   /**
@@ -69,7 +69,8 @@ export class RecipientService {
    */
   async create(data: TCreateRecipient, actorId: string): Promise<TRecipientResponse> {
     const recipient = await this.repository.create({
-      fullName: data.fullName,
+      firstName: data.firstName,
+      lastName: data.lastName,
       preferredLanguageCode: data.preferredLanguageCode,
     });
 
@@ -91,7 +92,7 @@ export class RecipientService {
       action: 'recipient.created',
       entityType: 'Recipient',
       entityId: recipient.id,
-      metadata: { fullName: recipient.fullName, channelCount: channelEntities.length },
+      metadata: { firstName: recipient.firstName, lastName: recipient.lastName, channelCount: channelEntities.length },
     });
 
     return this.toResponse(recipient, channelEntities);
@@ -202,9 +203,9 @@ export class RecipientService {
    *
    * Expected CSV format (header row required):
    * ```
-   * fullName,preferredLanguageCode
-   * Amina Benali,fr
-   * Jan Peeters,nl
+   * firstName,lastName,preferredLanguageCode
+   * Amina,Benali,fr
+   * Jan,Peeters,nl
    * ```
    *
    * @param buffer - Raw CSV file bytes (UTF-8 encoded).
@@ -251,17 +252,22 @@ export class RecipientService {
   /**
    * Parses a CSV line into a recipient creation data object.
    *
-   * @param line - A trimmed CSV line with exactly two comma-separated fields.
-   * @returns Parsed data, or `null` if any field is missing or blank.
+   * Expected format: `firstName,lastName,preferredLanguageCode`
+   *
+   * @param line - A trimmed CSV line with exactly three comma-separated fields.
+   * @returns Parsed data, or `null` if any required field is missing or blank.
    */
-  private parseRow(line: string): { fullName: string; preferredLanguageCode: string } | null {
-    const [rawName, rawLang] = line.split(',');
-    const fullName = rawName?.trim() ?? '';
+  private parseRow(
+    line: string,
+  ): { firstName: string; lastName: string; preferredLanguageCode: string } | null {
+    const [rawFirst, rawLast, rawLang] = line.split(',');
+    const firstName = rawFirst?.trim() ?? '';
+    const lastName = rawLast?.trim() ?? '';
     const preferredLanguageCode = rawLang?.trim() ?? '';
 
-    if (!fullName || !preferredLanguageCode) return null;
+    if (!firstName || !lastName || !preferredLanguageCode) return null;
 
-    return { fullName, preferredLanguageCode };
+    return { firstName, lastName, preferredLanguageCode };
   }
 
   /**
@@ -273,7 +279,8 @@ export class RecipientService {
   ): TRecipientResponse {
     return {
       id: recipient.id,
-      fullName: recipient.fullName,
+      firstName: recipient.firstName,
+      lastName: recipient.lastName,
       preferredLanguageCode: recipient.preferredLanguageCode,
       isActive: recipient.isActive,
       createdAt: recipient.createdAt.toISOString(),
