@@ -8,7 +8,7 @@ CREATE TYPE "MessageChannel" AS ENUM ('EMAIL', 'SMS', 'WHATSAPP');
 CREATE TYPE "RecipientMode" AS ENUM ('REGISTERED', 'ANONYMOUS');
 
 -- CreateEnum
-CREATE TYPE "DispatchStatus" AS ENUM ('DRAFT', 'QUEUED', 'SENDING', 'DONE', 'FAILED');
+CREATE TYPE "DispatchStatus" AS ENUM ('DRAFT', 'QUEUED', 'IN_PROGRESS', 'DONE', 'CANCELLED', 'FAILED');
 
 -- CreateEnum
 CREATE TYPE "MessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'FAILED');
@@ -18,6 +18,15 @@ CREATE TYPE "WaTemplateStatus" AS ENUM ('NOT_SUBMITTED', 'PENDING', 'APPROVED', 
 
 -- CreateEnum
 CREATE TYPE "WaTemplateCategory" AS ENUM ('UTILITY', 'MARKETING', 'AUTHENTICATION');
+
+-- CreateEnum
+CREATE TYPE "VariableType" AS ENUM ('TEXT', 'NUMBER', 'DATE', 'TIME');
+
+-- CreateEnum
+CREATE TYPE "VariableSource" AS ENUM ('MANUAL', 'RECIPIENT_FIELD');
+
+-- CreateEnum
+CREATE TYPE "RecipientField" AS ENUM ('firstName', 'lastName');
 
 -- CreateTable
 CREATE TABLE "languages" (
@@ -33,8 +42,11 @@ CREATE TABLE "users" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
+    "firstName" TEXT,
+    "lastName" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'SENDER',
     "preferredLanguageCode" VARCHAR(10) NOT NULL DEFAULT 'fr',
+    "notifyOnFailure" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -57,7 +69,8 @@ CREATE TABLE "refresh_tokens" (
 -- CreateTable
 CREATE TABLE "recipients" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-    "fullName" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
     "preferredLanguageCode" VARCHAR(10) NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -81,8 +94,10 @@ CREATE TABLE "recipient_channels" (
 -- CreateTable
 CREATE TABLE "templates" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "name" TEXT NOT NULL DEFAULT '',
     "slug" TEXT NOT NULL,
-    "category" TEXT NOT NULL,
+    "category" TEXT NOT NULL DEFAULT 'general',
+    "fallbackLanguageCode" TEXT NOT NULL DEFAULT 'en',
     "createdById" UUID NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -97,6 +112,9 @@ CREATE TABLE "template_variables" (
     "templateId" UUID NOT NULL,
     "key" TEXT NOT NULL,
     "label" TEXT NOT NULL,
+    "type" "VariableType" NOT NULL DEFAULT 'TEXT',
+    "source" "VariableSource" NOT NULL DEFAULT 'MANUAL',
+    "recipientField" "RecipientField",
     "isRequired" BOOLEAN NOT NULL DEFAULT true,
     "defaultValue" TEXT,
 
@@ -108,8 +126,10 @@ CREATE TABLE "template_translations" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "templateId" UUID NOT NULL,
     "languageCode" VARCHAR(10) NOT NULL,
+    "name" TEXT,
     "subject" TEXT,
     "body" TEXT NOT NULL,
+    "variableLabels" JSONB,
     "waTemplateName" TEXT,
     "waTemplateStatus" "WaTemplateStatus" NOT NULL DEFAULT 'NOT_SUBMITTED',
     "waTemplateCategory" "WaTemplateCategory",

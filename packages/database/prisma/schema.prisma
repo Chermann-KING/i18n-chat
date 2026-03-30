@@ -42,8 +42,12 @@ model User {
   email                 String   @unique
   /// Hashed with argon2 — never store plaintext.
   passwordHash          String
+  firstName             String?
+  lastName              String?
   role                  UserRole @default(SENDER)
   preferredLanguageCode String   @default("fr") @db.VarChar(10)
+  /// When true, the user receives an email when one of their dispatches fails.
+  notifyOnFailure       Boolean  @default(false)
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -95,8 +99,9 @@ enum RecipientMode {
 enum DispatchStatus {
   DRAFT
   QUEUED
-  SENDING
+  IN_PROGRESS
   DONE
+  CANCELLED
   FAILED
 }
 
@@ -120,12 +125,30 @@ enum WaTemplateCategory {
   AUTHENTICATION
 }
 
+enum VariableType {
+  TEXT
+  NUMBER
+  DATE
+  TIME
+}
+
+enum VariableSource {
+  MANUAL
+  RECIPIENT_FIELD
+}
+
+enum RecipientField {
+  firstName
+  lastName
+}
+
 // ─── Recipients ───────────────────────────────────────────────────────────────
 
 /// A registered recipient profile with a known preferred language.
 model Recipient {
   id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  fullName              String
+  firstName             String
+  lastName              String
   preferredLanguageCode String   @db.VarChar(10)
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
@@ -162,14 +185,18 @@ model RecipientChannel {
 
 /// A reusable message template that can be translated into multiple languages.
 model Template {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Human-readable display name, e.g. 'Rappel de rendez-vous'.
+  name                 String
   /// Machine-readable identifier, e.g. 'appointment_reminder'. Must be unique.
-  slug        String   @unique
-  category    String
-  createdById String   @db.Uuid
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  slug                 String   @unique
+  category             String   @default("general")
+  /// ISO 639-1 code of the language used when no translation exists for a recipient's language.
+  fallbackLanguageCode String   @default("en")
+  createdById          String   @db.Uuid
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   createdBy    User                  @relation(fields: [createdById], references: [id])
   variables    TemplateVariable[]
@@ -187,8 +214,14 @@ model TemplateVariable {
   key          String
   /// Human-readable label shown to the sender in the UI.
   label        String
-  isRequired   Boolean @default(true)
-  defaultValue String?
+  /// Determines which input widget is shown in the dispatch wizard.
+  type          VariableType   @default(TEXT)
+  /// Whether the value is typed by staff (MANUAL) or auto-injected from the recipient profile (RECIPIENT_FIELD).
+  source        VariableSource @default(MANUAL)
+  /// When source is RECIPIENT_FIELD, the recipient profile field to map.
+  recipientField RecipientField?
+  isRequired    Boolean        @default(true)
+  defaultValue  String?
 
   template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -201,10 +234,15 @@ model TemplateTranslation {
   id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   templateId   String  @db.Uuid
   languageCode String  @db.VarChar(10)
+  /// Localized name of the template in this language. Falls back to the template-level name when absent.
+  name         String?
   /// Used as the email subject line. Ignored for SMS and WhatsApp.
   subject      String?
   /// Handlebars template string, e.g. "Bonjour {{prenom}}, votre RDV est le {{date}}."
   body         String
+  /// Per-language labels for each variable key, e.g. {"date": "Datum van de afspraak"}.
+  /// Falls back to TemplateVariable.label when absent.
+  variableLabels Json?
 
   // ── WhatsApp (Meta Cloud API) ──────────────────────────────────────────────
   /// Approved HSM template name in Meta Business Manager.

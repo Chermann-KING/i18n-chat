@@ -1,4 +1,10 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import {
+  PrismaClient,
+  RecipientField,
+  UserRole,
+  VariableSource,
+  VariableType,
+} from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -61,16 +67,37 @@ async function main(): Promise<void> {
   console.warn('  → Upserting sample template…');
   const template = await prisma.template.upsert({
     where: { slug: 'appointment_reminder' },
-    update: {},
+    update: { name: 'Rappel de rendez-vous' },
     create: {
+      name: 'Rappel de rendez-vous',
       slug: 'appointment_reminder',
       category: 'administrative',
+      fallbackLanguageCode: 'fr',
       createdById: admin.id,
       variables: {
         create: [
-          { key: 'prenom', label: 'Prénom du destinataire', isRequired: true },
-          { key: 'date', label: 'Date du rendez-vous', isRequired: true },
-          { key: 'lieu', label: 'Lieu du rendez-vous', isRequired: false },
+          {
+            key: 'prenom',
+            label: 'Prénom du destinataire',
+            type: VariableType.TEXT,
+            source: VariableSource.RECIPIENT_FIELD,
+            recipientField: RecipientField.firstName,
+            isRequired: true,
+          },
+          {
+            key: 'date',
+            label: 'Date du rendez-vous',
+            type: VariableType.DATE,
+            source: VariableSource.MANUAL,
+            isRequired: true,
+          },
+          {
+            key: 'lieu',
+            label: 'Lieu du rendez-vous',
+            type: VariableType.TEXT,
+            source: VariableSource.MANUAL,
+            isRequired: false,
+          },
         ],
       },
     },
@@ -79,18 +106,28 @@ async function main(): Promise<void> {
   const translations = [
     {
       languageCode: 'fr',
+      name: 'Rappel de rendez-vous',
       subject: 'Rappel de rendez-vous',
       body: 'Bonjour {{prenom}}, votre rendez-vous est confirmé pour le {{date}} à {{lieu}}.',
+      variableLabels: {
+        prenom: 'Prénom',
+        date: 'Date du rendez-vous',
+        lieu: 'Lieu du rendez-vous',
+      },
     },
     {
       languageCode: 'nl',
+      name: 'Afspraakherinnering',
       subject: 'Herinnering aan uw afspraak',
       body: 'Beste {{prenom}}, uw afspraak is bevestigd op {{date}} in {{lieu}}.',
+      variableLabels: { prenom: 'Voornaam', date: 'Datum van de afspraak', lieu: 'Locatie' },
     },
     {
       languageCode: 'en',
+      name: 'Appointment reminder',
       subject: 'Appointment reminder',
       body: 'Hello {{prenom}}, your appointment is confirmed for {{date}} at {{lieu}}.',
+      variableLabels: { prenom: 'First name', date: 'Appointment date', lieu: 'Location' },
     },
   ];
 
@@ -103,12 +140,19 @@ async function main(): Promise<void> {
             languageCode: translation.languageCode,
           },
         },
-        update: { subject: translation.subject, body: translation.body },
+        update: {
+          name: translation.name,
+          subject: translation.subject,
+          body: translation.body,
+          variableLabels: translation.variableLabels,
+        },
         create: {
           templateId: template.id,
           languageCode: translation.languageCode,
+          name: translation.name,
           subject: translation.subject,
           body: translation.body,
+          variableLabels: translation.variableLabels,
         },
       }),
     ),

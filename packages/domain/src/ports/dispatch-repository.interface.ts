@@ -11,6 +11,8 @@ export interface DispatchEntity {
   readonly createdById: string;
   readonly recipientMode: RecipientMode;
   readonly templateId: string | null;
+  /** Denormalized template name — populated by list/detail queries for display purposes. */
+  readonly templateName?: string | null;
   readonly freeTextOriginal: string | null;
   readonly status: DispatchStatus;
   readonly scheduledAt: Date | null;

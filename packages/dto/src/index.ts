@@ -13,8 +13,22 @@ export { LoginSchema, RefreshTokenSchema, AuthTokensSchema } from './auth.schema
 export type { TLogin, TRefreshToken, TAuthTokens } from './auth.schema';
 
 // ─── User ──────────────────────────────────────────────────────────────────────
-export { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from './user.schema';
-export type { TCreateUser, TUpdateUser, TUserResponse } from './user.schema';
+export {
+  CreateUserSchema,
+  UpdateUserSchema,
+  UpdateProfileSchema,
+  ChangePasswordSchema,
+  UpdateNotificationsSchema,
+  UserResponseSchema,
+} from './user.schema';
+export type {
+  TCreateUser,
+  TUpdateUser,
+  TUpdateProfile,
+  TChangePassword,
+  TUpdateNotifications,
+  TUserResponse,
+} from './user.schema';
 
 // ─── Language ──────────────────────────────────────────────────────────────────
 export {
@@ -45,6 +59,7 @@ export type {
 export {
   TemplateVariableSchema,
   TemplateVariableResponseSchema,
+  AddVariableSchema,
   CreateTemplateSchema,
   UpdateTemplateSchema,
   CreateTranslationSchema,
@@ -53,6 +68,7 @@ export {
   TemplateResponseSchema,
 } from './template.schema';
 export type {
+  TAddVariable,
   TCreateTemplate,
   TUpdateTemplate,
   TCreateTranslation,

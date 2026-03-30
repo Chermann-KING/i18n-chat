@@ -8,7 +8,11 @@ export interface MessageEntity {
   readonly id: string;
   readonly dispatchId: string;
   readonly recipientId: string | null;
+  /** Full name of the registered recipient, when applicable. */
+  readonly recipientName: string | null;
   readonly anonymousTargetId: string | null;
+  /** Contact address (email/phone) for anonymous targets. */
+  readonly anonymousContact: string | null;
   readonly channel: MessageChannel;
   readonly languageCode: string;
   readonly translatedBody: string;

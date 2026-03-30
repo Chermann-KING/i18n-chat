@@ -20,7 +20,7 @@ export const CreateUserSchema = z.object({
   preferredLanguageCode: z.string().min(2).max(10).optional(),
 });
 
-/** Validation schema for updating an existing staff user. */
+/** Validation schema for updating an existing staff user (admin only). */
 export const UpdateUserSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).optional(),
@@ -29,12 +29,36 @@ export const UpdateUserSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+/** Schema for updating the authenticated user's own profile. */
+export const UpdateProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  preferredLanguageCode: z.string().min(2).max(10).optional(),
+});
+
+/** Schema for changing the authenticated user's password. */
+export const ChangePasswordSchema = z.object({
+  /** The user's current password (used to verify identity). */
+  currentPassword: z.string().min(1),
+  /** The new password to set. */
+  newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+});
+
+/** Schema for updating the authenticated user's notification preferences. */
+export const UpdateNotificationsSchema = z.object({
+  /** When true, the user receives an email when one of their dispatches fails. */
+  notifyOnFailure: z.boolean(),
+});
+
 /** Schema for the user object returned by the API (no password hash). */
 export const UserResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
   role: z.nativeEnum(UserRole),
   preferredLanguageCode: z.string(),
+  notifyOnFailure: z.boolean(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -47,6 +71,15 @@ export type TCreateUser = z.infer<typeof CreateUserSchema>;
 
 /** @see {@link UpdateUserSchema} */
 export type TUpdateUser = z.infer<typeof UpdateUserSchema>;
+
+/** @see {@link UpdateProfileSchema} */
+export type TUpdateProfile = z.infer<typeof UpdateProfileSchema>;
+
+/** @see {@link ChangePasswordSchema} */
+export type TChangePassword = z.infer<typeof ChangePasswordSchema>;
+
+/** @see {@link UpdateNotificationsSchema} */
+export type TUpdateNotifications = z.infer<typeof UpdateNotificationsSchema>;
 
 /** @see {@link UserResponseSchema} */
 export type TUserResponse = z.infer<typeof UserResponseSchema>;

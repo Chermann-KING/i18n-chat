@@ -5,4 +5,5 @@ module.exports = {
     project: './tsconfig.json',
     tsconfigRootDir: __dirname,
   },
+  ignorePatterns: ['src/**/*.d.ts', 'src/**/*.js', 'dist/**'],
 };

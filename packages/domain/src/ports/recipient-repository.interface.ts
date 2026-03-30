@@ -3,16 +3,6 @@ import type { PagedResult } from './paged-result.type';
 
 // ─── Entity Shapes ────────────────────────────────────────────────────────────
 
-/** Domain view of a registered recipient profile. */
-export interface RecipientEntity {
-  readonly id: string;
-  readonly fullName: string;
-  readonly preferredLanguageCode: string;
-  readonly isActive: boolean;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-}
-
 /** Domain view of a recipient's contact channel. */
 export interface RecipientChannelEntity {
   readonly id: string;
@@ -24,17 +14,31 @@ export interface RecipientChannelEntity {
   readonly createdAt: Date;
 }
 
+/** Domain view of a registered recipient profile. */
+export interface RecipientEntity {
+  readonly id: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly preferredLanguageCode: string;
+  readonly isActive: boolean;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly channels?: RecipientChannelEntity[];
+}
+
 // ─── Input Types ──────────────────────────────────────────────────────────────
 
 /** Data required to create a new recipient. */
 export interface CreateRecipientData {
-  readonly fullName: string;
+  readonly firstName: string;
+  readonly lastName: string;
   readonly preferredLanguageCode: string;
 }
 
 /** Partial data allowed when updating an existing recipient. */
 export interface UpdateRecipientData {
-  readonly fullName?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
   readonly preferredLanguageCode?: string;
   readonly isActive?: boolean;
 }

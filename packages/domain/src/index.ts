@@ -6,6 +6,8 @@ export { MessageStatus } from './enums/message-status.enum';
 export { RecipientMode } from './enums/recipient-mode.enum';
 export { WaTemplateStatus } from './enums/wa-template-status.enum';
 export { WaTemplateCategory } from './enums/wa-template-category.enum';
+export { VariableType } from './enums/variable-type.enum';
+export { VariableSource, RecipientField } from './enums/variable-source.enum';
 
 // ─── Exceptions ───────────────────────────────────────────────────────────────
 export { AppException } from './exceptions/app.exception';
@@ -60,4 +62,6 @@ export {
   FALLBACK_LANGUAGE_CODE,
   ANONYMOUS_TARGET_TTL_DAYS,
   MAX_RECIPIENTS_PER_DISPATCH,
+  TEMPLATE_CATEGORIES,
+  type TemplateCategory,
 } from './constants';

@@ -26,8 +26,10 @@ export const RecipientChannelResponseSchema = z.object({
 
 /** Validation schema for creating a new recipient. */
 export const CreateRecipientSchema = z.object({
-  /** Full name of the recipient, e.g. `'Amina Benali'`. */
-  fullName: z.string().min(1).max(200),
+  /** First name of the recipient, e.g. `'Amina'`. */
+  firstName: z.string().min(1).max(100),
+  /** Last name of the recipient, e.g. `'Benali'`. */
+  lastName: z.string().min(1).max(100),
   /** ISO 639-1 code of the recipient's preferred language. */
   preferredLanguageCode: z.string().min(2).max(10),
   /** Optional list of contact channels to register at creation time. */
@@ -36,7 +38,8 @@ export const CreateRecipientSchema = z.object({
 
 /** Validation schema for updating an existing recipient. */
 export const UpdateRecipientSchema = z.object({
-  fullName: z.string().min(1).max(200).optional(),
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
   preferredLanguageCode: z.string().min(2).max(10).optional(),
   isActive: z.boolean().optional(),
 });
@@ -50,7 +53,8 @@ export const AddChannelSchema = z.object({
 /** Schema for the recipient object returned by the API. */
 export const RecipientResponseSchema = z.object({
   id: z.string().uuid(),
-  fullName: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
   preferredLanguageCode: z.string(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),

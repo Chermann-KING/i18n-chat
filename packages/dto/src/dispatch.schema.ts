@@ -67,6 +67,8 @@ export const DispatchResponseSchema = z.object({
   id: z.string().uuid(),
   recipientMode: z.nativeEnum(RecipientMode),
   templateId: z.string().uuid().nullable().optional(),
+  /** Denormalized template name for display — null for free-text dispatches. */
+  templateName: z.string().nullable().optional(),
   freeTextOriginal: z.string().nullable().optional(),
   status: z.nativeEnum(DispatchStatus),
   scheduledAt: z.string().datetime().nullable().optional(),

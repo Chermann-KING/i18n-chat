@@ -58,6 +58,19 @@ services:
       retries: 5
       start_period: 60s
 
+  # ─── Mailpit (dev email catcher) ────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: i18n_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP — reçoit les emails de l'API
+      - "8025:8025"   # UI web — http://localhost:8025
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+
 volumes:
   postgres_data:
   redis_data:

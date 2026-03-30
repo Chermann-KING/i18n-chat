@@ -1,3 +1,5 @@
+import type { VariableSource, RecipientField } from '../enums/variable-source.enum';
+import type { VariableType } from '../enums/variable-type.enum';
 import type { WaTemplateCategory } from '../enums/wa-template-category.enum';
 import type { WaTemplateStatus } from '../enums/wa-template-status.enum';
 import type { PagedResult } from './paged-result.type';
@@ -11,6 +13,11 @@ export interface TemplateVariableEntity {
   /** Handlebars key, e.g. `'prenom'`, `'date'`. */
   readonly key: string;
   readonly label: string;
+  readonly type: VariableType;
+  /** Whether the value is typed by the staff (`MANUAL`) or auto-injected from the recipient profile (`RECIPIENT_FIELD`). */
+  readonly source: VariableSource;
+  /** When `source` is `RECIPIENT_FIELD`, the recipient profile field to map. */
+  readonly recipientField: RecipientField | null;
   readonly isRequired: boolean;
   readonly defaultValue: string | null;
 }
@@ -20,8 +27,13 @@ export interface TemplateTranslationEntity {
   readonly id: string;
   readonly templateId: string;
   readonly languageCode: string;
+  /** Localized name of the template in this language. Falls back to `TemplateEntity.name` when absent. */
+  readonly name: string | null;
   readonly subject: string | null;
   readonly body: string;
+  /** Per-language labels for each variable key, e.g. `{"date": "Datum van de afspraak"}`.
+   *  Falls back to `TemplateVariableEntity.label` when absent. */
+  readonly variableLabels: Record<string, string> | null;
   readonly waTemplateName: string | null;
   readonly waTemplateStatus: WaTemplateStatus;
   readonly waTemplateCategory: WaTemplateCategory | null;
@@ -33,8 +45,12 @@ export interface TemplateTranslationEntity {
 /** Domain view of a message template. */
 export interface TemplateEntity {
   readonly id: string;
+  /** Human-readable display name, e.g. 'Rappel de rendez-vous'. */
+  readonly name: string;
   readonly slug: string;
   readonly category: string;
+  /** ISO 639-1 fallback language code used when no translation exists for the recipient's language. */
+  readonly fallbackLanguageCode: string;
   readonly createdById: string;
   readonly isActive: boolean;
   readonly createdAt: Date;
@@ -49,14 +65,19 @@ export interface TemplateEntity {
 export interface CreateTemplateVariableData {
   readonly key: string;
   readonly label: string;
+  readonly type: VariableType;
+  readonly source: VariableSource;
+  readonly recipientField?: RecipientField;
   readonly isRequired: boolean;
   readonly defaultValue?: string;
 }
 
 /** Data required to create a new template. */
 export interface CreateTemplateData {
+  readonly name: string;
   readonly slug: string;
   readonly category: string;
+  readonly fallbackLanguageCode: string;
   readonly createdById: string;
   readonly variables?: CreateTemplateVariableData[];
 }
@@ -70,8 +91,12 @@ export interface UpdateTemplateData {
 /** Data required to create or update a template translation. */
 export interface UpsertTranslationData {
   readonly languageCode: string;
+  /** Localized name of the template in this language. Optional. */
+  readonly name?: string;
   readonly subject?: string;
   readonly body: string;
+  /** Per-language labels for each variable key. Optional — falls back to `TemplateVariable.label`. */
+  readonly variableLabels?: Record<string, string>;
   readonly waTemplateName?: string;
   readonly waTemplateCategory?: WaTemplateCategory;
 }
@@ -200,4 +225,23 @@ export interface ITemplateRepository {
    * @param languageCode - ISO 639-1 code.
    */
   deleteTranslation(templateId: string, languageCode: string): Promise<void>;
+
+  /**
+   * Adds a variable placeholder to an existing template.
+   *
+   * @param templateId - Template UUID.
+   * @param data - Variable definition.
+   * @returns The newly created variable entity.
+   */
+  addVariable(
+    templateId: string,
+    data: CreateTemplateVariableData,
+  ): Promise<TemplateVariableEntity>;
+
+  /**
+   * Removes a variable from a template by its UUID.
+   *
+   * @param variableId - UUID of the variable to remove.
+   */
+  deleteVariable(variableId: string): Promise<void>;
 }
