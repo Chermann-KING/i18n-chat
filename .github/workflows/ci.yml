@@ -120,6 +120,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Normalize image names (GHCR requires lowercase)
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_API=ghcr.io/${OWNER}/i18n-chat-api" >> $GITHUB_ENV
+          echo "IMAGE_WEB=ghcr.io/${OWNER}/i18n-chat-web" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
