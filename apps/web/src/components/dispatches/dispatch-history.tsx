@@ -4,9 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Plus } from 'lucide-react';
+import { Check, Download, ListFilter, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { bffGet } from '@/lib/bff-client';
 import { BFF_ROUTES } from '@/lib/constants/bff-routes';
 import { QUERY_KEYS } from '@/lib/constants/query-keys';
@@ -16,8 +22,9 @@ type DispatchStatus = 'DRAFT' | 'QUEUED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED' 
 interface Dispatch {
   id: string;
   status: DispatchStatus;
-  template: { name: string };
-  recipientCount: number;
+  templateName?: string | null;
+  freeTextOriginal?: string | null;
+  messageCount?: number;
   createdAt: string;
 }
 
@@ -43,7 +50,8 @@ interface DispatchHistoryProps {
 }
 
 /**
- * Dispatch history table with status filter, pagination, and CSV export.
+ * Dispatch history — status filter bar, CSV export, and dispatch list.
+ * Renders a scrollable table on sm+ and a card list on mobile.
  */
 export function DispatchHistory({ locale }: DispatchHistoryProps) {
   const t = useTranslations('dispatches');
@@ -91,24 +99,41 @@ export function DispatchHistory({ locale }: DispatchHistoryProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {STATUS_OPTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatusFilter(s)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                statusFilter === s
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'hover:bg-muted'
-              }`}
-            >
-              {s ? t(`statuses.${s}`) : 'All'}
-            </button>
-          ))}
-        </div>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Filter dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <ListFilter className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {statusFilter ? t(`statuses.${statusFilter}`) : tc('all')}
+              </span>
+              {statusFilter && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-4 rounded-sm px-1 text-[10px] sm:hidden"
+                >
+                  1
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            {STATUS_OPTIONS.map((s) => (
+              <DropdownMenuItem
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className="flex items-center justify-between"
+              >
+                <span>{s ? t(`statuses.${s}`) : tc('all')}</span>
+                {statusFilter === s && <Check className="h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
+        {/* Actions */}
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -118,12 +143,12 @@ export function DispatchHistory({ locale }: DispatchHistoryProps) {
             }}
             disabled={exportLoading}
           >
-            <Download className="mr-2 h-4 w-4" />
-            {t('exportCsv')}
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t('exportCsv')}</span>
           </Button>
           <Button size="sm" onClick={() => router.push(`/${locale}/dispatches/new`)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('new')}
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t('new')}</span>
           </Button>
         </div>
       </div>
@@ -133,7 +158,8 @@ export function DispatchHistory({ locale }: DispatchHistoryProps) {
         <p className="text-sm text-muted-foreground">{tc('noResults')}</p>
       )}
 
-      <div className="rounded-md border">
+      {/* Desktop table */}
+      <div className="hidden rounded-md border sm:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -150,8 +176,10 @@ export function DispatchHistory({ locale }: DispatchHistoryProps) {
                 className="cursor-pointer border-t hover:bg-muted/30"
                 onClick={() => router.push(`/${locale}/dispatches/${dispatch.id}`)}
               >
-                <td className="px-4 py-3 font-medium">{dispatch.template.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{dispatch.recipientCount}</td>
+                <td className="px-4 py-3 font-medium">
+                  {dispatch.templateName ?? dispatch.freeTextOriginal?.slice(0, 40) ?? '—'}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{dispatch.messageCount ?? '—'}</td>
                 <td className="px-4 py-3">
                   <Badge variant={STATUS_VARIANT[dispatch.status]}>
                     {t(`statuses.${dispatch.status}`)}
@@ -164,6 +192,32 @@ export function DispatchHistory({ locale }: DispatchHistoryProps) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="divide-y rounded-md border sm:hidden">
+        {data?.data.map((dispatch) => (
+          <div
+            key={dispatch.id}
+            className="cursor-pointer p-4 hover:bg-muted/30"
+            onClick={() => router.push(`/${locale}/dispatches/${dispatch.id}`)}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-sm font-medium leading-snug">
+                {dispatch.templateName ?? dispatch.freeTextOriginal?.slice(0, 50) ?? '—'}
+              </span>
+              <Badge variant={STATUS_VARIANT[dispatch.status]} className="shrink-0">
+                {t(`statuses.${dispatch.status}`)}
+              </Badge>
+            </div>
+            <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                {dispatch.messageCount ?? '—'} {t('recipients')}
+              </span>
+              <span>{new Date(dispatch.createdAt).toLocaleString()}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

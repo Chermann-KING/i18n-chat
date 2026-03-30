@@ -25,10 +25,14 @@ export const DISPATCH_JOB_OPTIONS = {
 export interface DeliveryJobData {
   /** UUID of the {@link Message} record to update after delivery. */
   readonly messageId: string;
+  /** UUID of the parent {@link Dispatch} — used to finalize dispatch status. */
+  readonly dispatchId: string;
   /** E.164 phone number or email address of the recipient. */
   readonly contact: string;
   /** Rendered message body (used for email/SMS and WhatsApp text messages). */
   readonly body: string;
+  /** Email subject line — present only for EMAIL channel dispatches. */
+  readonly subject?: string;
   /** ISO 639-1 language code — used by WhatsApp template messages. */
   readonly languageCode: string;
   /** WhatsApp HSM template name — present only for WhatsApp template dispatches. */

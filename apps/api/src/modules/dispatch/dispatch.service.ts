@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
   ANONYMOUS_TARGET_TTL_DAYS,
+  AppException,
   DispatchStatus,
   MessageChannel,
   NotFoundException,
   RecipientMode,
+  VariableSource,
 } from '@i18n-chat/domain';
 import type {
   AnonymousTargetEntity,
@@ -14,6 +16,7 @@ import type {
   PagedResult,
   RecipientChannelEntity,
   RecipientEntity,
+  TemplateVariableEntity,
 } from '@i18n-chat/domain';
 import type { TCreateDispatch, TDispatchResponse, TDispatchTarget } from '@i18n-chat/dto';
 import { RecipientRepository } from '../recipient/recipient.repository';
@@ -94,7 +97,75 @@ export class DispatchService {
    */
   async findAll(options?: FindDispatchesOptions): Promise<PagedResult<TDispatchResponse>> {
     const result = await this.dispatchRepo.findAll(options);
-    return { data: result.data.map((d) => this.toResponse(d)), total: result.total };
+    const ids = result.data.map((d) => d.id);
+    const countMap =
+      ids.length > 0 ? await this.messageRepo.countByDispatchIds(ids) : new Map<string, number>();
+    return {
+      data: result.data.map((d) => this.toResponse(d, countMap.get(d.id))),
+      total: result.total,
+    };
+  }
+
+  /**
+   * Exports dispatches as a RFC 4180-compliant CSV string.
+   *
+   * @param options - Optional status filter.
+   * @returns UTF-8 CSV with BOM for Excel compatibility.
+   */
+  async exportCsv(options?: { status?: DispatchStatus }): Promise<string> {
+    const result = await this.dispatchRepo.findAll({ status: options?.status, limit: 10_000 });
+
+    const ids = result.data.map((d) => d.id);
+    const countMap = await this.messageRepo.countByDispatchIds(ids);
+
+    const escape = (v: string): string => `"${v.replace(/"/g, '""')}"`;
+    const header = ['ID', 'Template', 'Status', 'Recipients', 'Created At'].join(',');
+    const rows = result.data.map((d) =>
+      [
+        escape(d.id),
+        escape(d.templateName ?? d.freeTextOriginal?.slice(0, 60) ?? ''),
+        escape(d.status),
+        escape(String(countMap.get(d.id) ?? 0)),
+        escape(new Date(d.createdAt).toISOString()),
+      ].join(','),
+    );
+
+    // UTF-8 BOM ensures Excel opens the file with correct encoding.
+    return `\uFEFF${[header, ...rows].join('\r\n')}`;
+  }
+
+  /**
+   * Cancels a dispatch that is still in DRAFT or QUEUED status.
+   *
+   * @param id - Dispatch UUID.
+   * @param userId - UUID of the staff member requesting the cancellation.
+   * @throws {NotFoundException} When no dispatch with the given ID exists.
+   * @throws {AppException} When the dispatch is already in a terminal state.
+   */
+  async cancelDispatch(id: string, userId: string): Promise<TDispatchResponse> {
+    const dispatch = await this.dispatchRepo.findById(id);
+    if (!dispatch) throw new NotFoundException('Dispatch', id);
+
+    const cancellableStatuses: string[] = [DispatchStatus.DRAFT, DispatchStatus.QUEUED];
+    if (!cancellableStatuses.includes(dispatch.status)) {
+      throw new AppException(
+        `Dispatch cannot be cancelled in status "${dispatch.status}".`,
+        'DISPATCH_NOT_CANCELLABLE',
+        { id, status: dispatch.status },
+      );
+    }
+
+    await this.dispatchRepo.updateStatus(id, DispatchStatus.CANCELLED);
+
+    await this.audit.log({
+      userId,
+      action: 'dispatch.cancelled',
+      entityType: 'Dispatch',
+      entityId: id,
+      metadata: { previousStatus: dispatch.status },
+    });
+
+    return this.toResponse({ ...dispatch, status: DispatchStatus.CANCELLED });
   }
 
   /**
@@ -123,18 +194,52 @@ export class DispatchService {
       this.recipientRepo.findChannelsBatch(ids),
     ]);
 
+    let templateVars: TemplateVariableEntity[] = [];
+    if (dispatch.templateId) {
+      const tpl = await this.templateRepo.findById(dispatch.templateId, { includeVariables: true });
+      templateVars = tpl?.variables ?? [];
+    }
+
     const results = await Promise.all(
       recipients.map((r) => {
         const recipientChannels = channels.filter((c) => c.recipientId === r.id);
+        const autoVars = this.buildAutoVars(templateVars, r);
         const vars = this.mergeVars(
           dto.globalVariables ?? {},
+          autoVars,
           dto.recipientVariables?.[r.id] ?? {},
         );
-        return this.buildItemsForRecipient(dispatch, r, recipientChannels, dto.channels, vars);
+        return this.buildItemsForRecipient(
+          dispatch,
+          r,
+          recipientChannels,
+          dto.channels,
+          vars,
+          templateVars,
+        );
       }),
     );
 
     return results.flat();
+  }
+
+  /**
+   * Builds the auto-injected variable map for a recipient based on RECIPIENT_FIELD variables.
+   *
+   * @param templateVars - All variable definitions for the template.
+   * @param recipient - The recipient whose profile fields are injected.
+   */
+  private buildAutoVars(
+    templateVars: TemplateVariableEntity[],
+    recipient: RecipientEntity,
+  ): Record<string, string> {
+    return templateVars
+      .filter((v) => v.source === VariableSource.RECIPIENT_FIELD && !!v.recipientField)
+      .reduce<Record<string, string>>((acc, v) => {
+        const value = recipient[v.recipientField as keyof RecipientEntity];
+        if (typeof value === 'string') acc[v.key] = value;
+        return acc;
+      }, {});
   }
 
   /** Builds queue items for a single registered recipient across all requested channels. */
@@ -144,13 +249,19 @@ export class DispatchService {
     recipientChannels: RecipientChannelEntity[],
     requestedChannels: MessageChannel[],
     variables: Record<string, string>,
+    variableDefs: TemplateVariableEntity[] = [],
   ): Promise<MessageQueueItem[]> {
     const lang = recipient.preferredLanguageCode;
     const matched = recipientChannels.filter((c) => requestedChannels.includes(c.channel));
 
     return Promise.all(
       matched.map(async (ch) => {
-        const body = await this.resolveBody(dispatch, lang, variables);
+        const { body, subject } = await this.resolveContent(
+          dispatch,
+          lang,
+          variables,
+          variableDefs,
+        );
         const waInfo = await this.resolveWaInfo(dispatch, ch.channel, lang, variables);
         const entity = await this.messageRepo.create({
           dispatchId: dispatch.id,
@@ -163,8 +274,10 @@ export class DispatchService {
           entity,
           jobData: {
             messageId: entity.id,
+            dispatchId: dispatch.id,
             contact: ch.contact,
             body,
+            subject,
             languageCode: lang,
             ...waInfo,
           },
@@ -180,13 +293,21 @@ export class DispatchService {
     dispatch: DispatchEntity,
     dto: TCreateDispatch,
   ): Promise<MessageQueueItem[]> {
-    return Promise.all((dto.targets ?? []).map((t) => this.buildItemForTarget(dispatch, t)));
+    let templateVars: TemplateVariableEntity[] = [];
+    if (dispatch.templateId) {
+      const tpl = await this.templateRepo.findById(dispatch.templateId, { includeVariables: true });
+      templateVars = tpl?.variables ?? [];
+    }
+    return Promise.all(
+      (dto.targets ?? []).map((t) => this.buildItemForTarget(dispatch, t, templateVars)),
+    );
   }
 
   /** Builds a queue item for a single anonymous target. */
   private async buildItemForTarget(
     dispatch: DispatchEntity,
     target: TDispatchTarget,
+    variableDefs: TemplateVariableEntity[] = [],
   ): Promise<MessageQueueItem> {
     const purgeAt = new Date();
     purgeAt.setDate(purgeAt.getDate() + ANONYMOUS_TARGET_TTL_DAYS);
@@ -199,7 +320,12 @@ export class DispatchService {
       purgeAt,
     });
 
-    const body = await this.resolveBody(dispatch, target.languageCode, target.variables);
+    const { body, subject } = await this.resolveContent(
+      dispatch,
+      target.languageCode,
+      target.variables,
+      variableDefs,
+    );
     const waInfo = await this.resolveWaInfo(
       dispatch,
       target.channel,
@@ -219,8 +345,10 @@ export class DispatchService {
       entity,
       jobData: {
         messageId: entity.id,
+        dispatchId: dispatch.id,
         contact: target.contact,
         body,
+        subject,
         languageCode: target.languageCode,
         ...waInfo,
       },
@@ -229,16 +357,24 @@ export class DispatchService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  /** Resolves the final message body via template rendering or LibreTranslate. */
-  private async resolveBody(
+  /** Resolves the final message body and optional subject via template rendering or LibreTranslate. */
+  private async resolveContent(
     dispatch: DispatchEntity,
     languageCode: string,
     variables: Record<string, string>,
-  ): Promise<string> {
+    variableDefs: TemplateVariableEntity[] = [],
+  ): Promise<{ body: string; subject?: string }> {
     if (dispatch.templateId) {
-      return this.translationSvc.resolveBody(dispatch.templateId, languageCode, variables);
+      return this.translationSvc.resolveTranslation(
+        dispatch.templateId,
+        languageCode,
+        variables,
+        variableDefs,
+      );
     }
-    return this.libretranslate.translate(dispatch.freeTextOriginal ?? '', languageCode);
+    return {
+      body: await this.libretranslate.translate(dispatch.freeTextOriginal ?? '', languageCode),
+    };
   }
 
   /**
@@ -270,12 +406,13 @@ export class DispatchService {
     return matches.map((m) => variables[m.slice(2, -2)] ?? '');
   }
 
-  /** Merges global and per-recipient variable maps (per-recipient takes precedence). */
+  /** Merges global, auto-injected, and per-recipient variable maps (priority: perRecipient > auto > global). */
   private mergeVars(
     global: Record<string, string>,
+    auto: Record<string, string>,
     perRecipient: Record<string, string>,
   ): Record<string, string> {
-    return { ...global, ...perRecipient };
+    return { ...global, ...auto, ...perRecipient };
   }
 
   /** Maps a {@link DispatchEntity} to the API response shape. */
@@ -284,6 +421,7 @@ export class DispatchService {
       id: dispatch.id,
       recipientMode: dispatch.recipientMode,
       templateId: dispatch.templateId ?? null,
+      templateName: dispatch.templateName ?? null,
       freeTextOriginal: dispatch.freeTextOriginal ?? null,
       status: dispatch.status,
       scheduledAt: dispatch.scheduledAt?.toISOString() ?? null,

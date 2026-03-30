@@ -41,7 +41,9 @@ const MESSAGE_ENTITY: MessageEntity = {
   id: MSG_ID,
   dispatchId: DISPATCH_ID,
   recipientId: RECIPIENT_ID,
+  recipientName: 'Alice Dupont',
   anonymousTargetId: null,
+  anonymousContact: null,
   channel: MessageChannel.EMAIL,
   languageCode: 'fr',
   translatedBody: 'Bonjour',
@@ -84,6 +86,8 @@ function buildMessageRepoMock(): jest.Mocked<MessageRepository> {
     findByDispatchId: jest.fn().mockResolvedValue([MESSAGE_ENTITY]),
     findById: jest.fn().mockResolvedValue(MESSAGE_ENTITY),
     updateStatus: jest.fn().mockResolvedValue(MESSAGE_ENTITY),
+    countByDispatchIds: jest.fn().mockResolvedValue(new Map([[DISPATCH_ID, 1]])),
+    finalizeDispatchIfComplete: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<MessageRepository>;
 }
 
@@ -92,7 +96,8 @@ function buildRecipientRepoMock(): jest.Mocked<RecipientRepository> {
     findManyByIds: jest.fn().mockResolvedValue([
       {
         id: RECIPIENT_ID,
-        fullName: 'Alice',
+        firstName: 'Alice',
+        lastName: 'Dupont',
         preferredLanguageCode: 'fr',
         isActive: true,
         createdAt: new Date(),
@@ -114,6 +119,7 @@ function buildRecipientRepoMock(): jest.Mocked<RecipientRepository> {
 
 function buildTemplateRepoMock(): jest.Mocked<TemplateRepository> {
   return {
+    findById: jest.fn().mockResolvedValue(null),
     findTranslation: jest.fn().mockResolvedValue(null),
   } as unknown as jest.Mocked<TemplateRepository>;
 }
@@ -123,7 +129,7 @@ type MockDeps = {
   messageRepo: jest.Mocked<MessageRepository>;
   recipientRepo: jest.Mocked<RecipientRepository>;
   templateRepo: jest.Mocked<TemplateRepository>;
-  translationSvc: { resolveBody: jest.Mock };
+  translationSvc: { resolveBody: jest.Mock; resolveTranslation: jest.Mock };
   libretranslate: { translate: jest.Mock };
   producer: { enqueueAll: jest.Mock };
 };
@@ -148,7 +154,10 @@ async function buildService(
   } as unknown as jest.Mocked<MessageRepository>;
   const recipientRepo = buildRecipientRepoMock();
   const templateRepo = buildTemplateRepoMock();
-  const translationSvc = { resolveBody: jest.fn().mockResolvedValue('Bonjour') };
+  const translationSvc = {
+    resolveBody: jest.fn().mockResolvedValue('Bonjour'),
+    resolveTranslation: jest.fn().mockResolvedValue({ body: 'Bonjour' }),
+  };
   const libretranslate = { translate: jest.fn().mockResolvedValue('Vertaald tekst') };
   const producer = { enqueueAll: jest.fn().mockResolvedValue(undefined) };
 
@@ -220,10 +229,12 @@ describe('DispatchService — createDispatch (REGISTERED)', () => {
       USER_ID,
     );
 
-    expect(mocks.translationSvc.resolveBody).toHaveBeenCalledWith('tpl-uuid', 'fr', {
-      date: '01/04',
-      prenom: 'Alice',
-    });
+    expect(mocks.translationSvc.resolveTranslation).toHaveBeenCalledWith(
+      'tpl-uuid',
+      'fr',
+      expect.objectContaining({ date: '01/04', prenom: 'Alice' }),
+      expect.any(Array),
+    );
   });
 
   it('skips channels the recipient has no contact for', async () => {

@@ -23,7 +23,7 @@ export default async function DispatchesPage({ params }: DispatchesPageProps) {
   return (
     <>
       <Topbar locale={locale} title={t('title')} />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-4 sm:p-6">
         <DispatchHistory locale={locale} />
       </main>
     </>
