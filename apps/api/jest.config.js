@@ -6,7 +6,9 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: 'src',
   testRegex: '.*\\.spec\\.ts$',
-  transform: { '^.+\\.(t|j)s$': 'ts-jest' },
+  // isolatedModules skips full project type-checking (rootDir / cross-file errors).
+  // Type correctness is enforced by the dedicated `type-check` CI job.
+  transform: { '^.+\\.(t|j)s$': ['ts-jest', { isolatedModules: true }] },
   // Resolve @i18n-chat/* workspace path aliases via tsconfig paths.
   // prefix points one level up from rootDir (src/) to where tsconfig.json lives.
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths ?? {}, {
