@@ -11,6 +11,7 @@ import type {
   MessageStatus as PrismaStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/encryption/encryption.service';
 
 /**
  * Prisma-backed implementation of {@link IMessageRepository}.
@@ -20,7 +21,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
  */
 @Injectable()
 export class MessageRepository implements IMessageRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryption: EncryptionService,
+  ) {}
 
   /** @inheritdoc */
   async create(data: CreateMessageData): Promise<MessageEntity> {
@@ -39,7 +43,13 @@ export class MessageRepository implements IMessageRepository {
 
   /** @inheritdoc */
   async findByDispatchId(dispatchId: string): Promise<MessageEntity[]> {
-    const rows = await this.prisma.message.findMany({ where: { dispatchId } });
+    const rows = await this.prisma.message.findMany({
+      where: { dispatchId },
+      include: {
+        recipient: { select: { firstName: true, lastName: true } },
+        anonymousTarget: { select: { contact: true } },
+      },
+    });
     return rows.map((r) => this.toEntity(r));
   }
 
@@ -64,7 +74,51 @@ export class MessageRepository implements IMessageRepository {
     return this.toEntity(row);
   }
 
-  /** Maps a Prisma Message row to a domain {@link MessageEntity}. */
+  /**
+   * Returns a map of dispatchId → message count for the given dispatch IDs.
+   * Uses a single GROUP BY query — O(1) regardless of the number of dispatches.
+   *
+   * @param dispatchIds - UUIDs of the dispatches to count messages for.
+   */
+  async countByDispatchIds(dispatchIds: string[]): Promise<Map<string, number>> {
+    const groups = await this.prisma.message.groupBy({
+      by: ['dispatchId'],
+      where: { dispatchId: { in: dispatchIds } },
+      _count: { id: true },
+    });
+    // eslint-disable-next-line no-underscore-dangle
+    return new Map(groups.map((g) => [g.dispatchId, g._count.id]));
+  }
+
+  /**
+   * Checks whether all messages for a dispatch have reached a terminal state
+   * (SENT, DELIVERED, or FAILED) and updates the dispatch status accordingly.
+   *
+   * - All FAILED → `FAILED`
+   * - Otherwise → `DONE`
+   *
+   * Does nothing if any message is still PENDING.
+   *
+   * @param dispatchId - UUID of the parent dispatch.
+   */
+  async finalizeDispatchIfComplete(dispatchId: string): Promise<void> {
+    const messages = await this.prisma.message.findMany({
+      where: { dispatchId },
+      select: { status: true },
+    });
+
+    const terminal = new Set(['SENT', 'DELIVERED', 'FAILED']);
+    const allTerminal = messages.length > 0 && messages.every((m) => terminal.has(m.status));
+    if (!allTerminal) return;
+
+    const allFailed = messages.every((m) => m.status === 'FAILED');
+    await this.prisma.dispatch.update({
+      where: { id: dispatchId },
+      data: { status: allFailed ? 'FAILED' : 'DONE' },
+    });
+  }
+
+  /** Maps a Prisma Message row (with optional includes) to a domain {@link MessageEntity}. */
   private toEntity(row: {
     id: string;
     dispatchId: string;
@@ -80,12 +134,18 @@ export class MessageRepository implements IMessageRepository {
     deliveredAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    recipient?: { firstName: string; lastName: string } | null;
+    anonymousTarget?: { contact: string } | null;
   }): MessageEntity {
     return {
       id: row.id,
       dispatchId: row.dispatchId,
       recipientId: row.recipientId,
+      recipientName: row.recipient ? `${row.recipient.firstName} ${row.recipient.lastName}` : null,
       anonymousTargetId: row.anonymousTargetId,
+      anonymousContact: row.anonymousTarget?.contact
+        ? this.encryption.decrypt(row.anonymousTarget.contact)
+        : null,
       channel: row.channel as unknown as MessageChannel,
       languageCode: row.languageCode,
       translatedBody: row.translatedBody,

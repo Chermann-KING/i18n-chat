@@ -3,6 +3,7 @@ import type { Job } from 'bullmq';
 import { MessageStatus } from '@i18n-chat/domain';
 import { WhatsAppChannel } from '../../channel/whatsapp/whatsapp.channel';
 import { DeliveryStatusGateway } from '../delivery-status.gateway';
+import { FailureNotificationService } from '../failure-notification.service';
 import { MessageRepository } from '../message.repository';
 import { QUEUE_WHATSAPP } from '../queue.constants';
 import type { DeliveryJobData } from '../queue.constants';
@@ -16,6 +17,8 @@ import type { DeliveryJobData } from '../queue.constants';
  * On success: updates the message status to `SENT` and emits a WebSocket event.
  * On failure: updates the status to `FAILED`, emits the event, then re-throws
  * so BullMQ can apply the configured retry back-off.
+ * After every job: notifies the dispatch owner if all messages failed and
+ * the owner has `notifyOnFailure = true`.
  */
 @Processor(QUEUE_WHATSAPP)
 export class WhatsAppWorker extends WorkerHost {
@@ -23,6 +26,7 @@ export class WhatsAppWorker extends WorkerHost {
     private readonly waChannel: WhatsAppChannel,
     private readonly messageRepo: MessageRepository,
     private readonly gateway: DeliveryStatusGateway,
+    private readonly failureNotification: FailureNotificationService,
   ) {
     super();
   }
@@ -33,8 +37,15 @@ export class WhatsAppWorker extends WorkerHost {
    * @param job - BullMQ job carrying a {@link DeliveryJobData} payload.
    */
   async process(job: Job<DeliveryJobData>): Promise<void> {
-    const { messageId, contact, body, languageCode, waTemplateName, waTemplateComponents } =
-      job.data;
+    const {
+      messageId,
+      dispatchId,
+      contact,
+      body,
+      languageCode,
+      waTemplateName,
+      waTemplateComponents,
+    } = job.data;
 
     try {
       const providerMessageId = await this.waChannel.send({
@@ -57,6 +68,9 @@ export class WhatsAppWorker extends WorkerHost {
       });
       this.gateway.emitStatusUpdate(messageId, MessageStatus.FAILED);
       throw error;
+    } finally {
+      await this.messageRepo.finalizeDispatchIfComplete(dispatchId);
+      await this.failureNotification.notifyOwnerIfNeeded(dispatchId);
     }
   }
 }

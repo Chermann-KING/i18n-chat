@@ -27,7 +27,10 @@ const mockUser: User = {
   email: 'test@example.com',
   passwordHash: 'hashed-password',
   role: UserRole.SENDER,
+  firstName: null,
+  lastName: null,
   preferredLanguageCode: 'fr',
+  notifyOnFailure: false,
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -103,7 +106,7 @@ describe('AuthService', () => {
 
       const result = await service.login(mockUser.email, 'correct-password');
 
-      expect(result).toMatchObject({ accessToken: expect.any(String), expiresIn: 900 });
+      expect(result).toMatchObject({ accessToken: expect.any(String), expiresIn: 14400 });
     });
 
     it('throws UnauthorizedException when user is not found', async () => {
@@ -147,7 +150,7 @@ describe('AuthService', () => {
 
       const result = await service.refreshTokens(FIXED_REFRESH_TOKEN);
 
-      expect(result).toMatchObject({ accessToken: FIXED_ACCESS_TOKEN, expiresIn: 900 });
+      expect(result).toMatchObject({ accessToken: FIXED_ACCESS_TOKEN, expiresIn: 14400 });
       expect(prisma.refreshToken.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { revokedAt: expect.any(Date) } }),
       );

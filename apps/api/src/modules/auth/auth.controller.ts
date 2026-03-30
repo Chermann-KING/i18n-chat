@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { TAuthTokens, TLogin, TRefreshToken } from '@i18n-chat/dto';
 import { LoginSchema, RefreshTokenSchema } from '@i18n-chat/dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -25,6 +26,7 @@ export class AuthController {
    * @param body - Validated login credentials.
    */
   @Public()
+  @Throttle({ default: { ttl: 900_000, limit: 5 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })

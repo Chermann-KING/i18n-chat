@@ -17,6 +17,7 @@ import type {
   RecipientMode as PrismaRecipientMode,
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/encryption/encryption.service';
 
 /** Default page number for paginated queries. */
 const DEFAULT_PAGE = 1;
@@ -26,16 +27,22 @@ const DEFAULT_LIMIT = 20;
 /**
  * Prisma-backed implementation of {@link IDispatchRepository}.
  *
- * Anonymous target contacts are stored as plain text in this implementation.
- * pgcrypto-based encryption will be layered on top in a future migration.
+ * Anonymous target contacts are encrypted at rest using AES-256-GCM
+ * via {@link EncryptionService} before being stored, and decrypted on read.
  */
 @Injectable()
 export class DispatchRepository implements IDispatchRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryption: EncryptionService,
+  ) {}
 
   /** @inheritdoc */
   async findById(id: string): Promise<DispatchEntity | null> {
-    const row = await this.prisma.dispatch.findUnique({ where: { id } });
+    const row = await this.prisma.dispatch.findUnique({
+      where: { id },
+      include: { template: { select: { name: true } } },
+    });
     return row ? this.toEntity(row) : null;
   }
 
@@ -54,7 +61,13 @@ export class DispatchRepository implements IDispatchRepository {
     };
 
     const [rows, total] = await Promise.all([
-      this.prisma.dispatch.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.dispatch.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { template: { select: { name: true } } },
+      }),
       this.prisma.dispatch.count({ where }),
     ]);
 
@@ -92,7 +105,7 @@ export class DispatchRepository implements IDispatchRepository {
       data: {
         dispatchId,
         channel: data.channel as unknown as PrismaChannel,
-        contact: data.contact,
+        contact: this.encryption.encrypt(data.contact),
         languageCode: data.languageCode,
         variables: data.variables,
         purgeAt: data.purgeAt,
@@ -140,12 +153,14 @@ export class DispatchRepository implements IDispatchRepository {
     scheduledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    template?: { name: string } | null;
   }): DispatchEntity {
     return {
       id: row.id,
       createdById: row.createdById,
       recipientMode: row.recipientMode as unknown as RecipientMode,
       templateId: row.templateId,
+      templateName: row.template?.name ?? null,
       freeTextOriginal: row.freeTextOriginal,
       status: row.status as unknown as DispatchStatus,
       scheduledAt: row.scheduledAt,
@@ -154,7 +169,11 @@ export class DispatchRepository implements IDispatchRepository {
     };
   }
 
-  /** Maps a Prisma AnonymousTarget row to an {@link AnonymousTargetEntity}. */
+  /**
+   * Maps a Prisma AnonymousTarget row to an {@link AnonymousTargetEntity}.
+   *
+   * The `contact` value is decrypted from AES-256-GCM ciphertext before being returned.
+   */
   private toAnonymousTargetEntity(row: {
     id: string;
     dispatchId: string;
@@ -169,7 +188,7 @@ export class DispatchRepository implements IDispatchRepository {
       id: row.id,
       dispatchId: row.dispatchId,
       channel: row.channel as unknown as MessageChannel,
-      contact: row.contact,
+      contact: this.encryption.decrypt(row.contact),
       languageCode: row.languageCode,
       variables: row.variables as Record<string, string>,
       purgeAt: row.purgeAt,

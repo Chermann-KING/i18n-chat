@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EncryptionModule } from './common/encryption/encryption.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -23,13 +24,16 @@ import { TranslationModule } from './modules/translation/translation.module';
  * Global providers:
  * - {@link JwtAuthGuard} — protects every route by default; bypass with `@Public()`.
  * - {@link RolesGuard} — enforces `@Roles()` metadata when present.
+ * - {@link ThrottlerGuard} — enforces rate limits defined by `ThrottlerModule`.
  * - {@link CorrelationIdInterceptor} — attaches a UUID to every request/response.
  *
  * Global modules:
  * - {@link PrismaModule} — makes `PrismaService` available everywhere.
  * - {@link AuditModule} — makes `AuditService` available everywhere.
+ * - {@link EncryptionModule} — makes `EncryptionService` available everywhere.
  * - `ScheduleModule` — enables `@Cron()` decorators across the application.
- * - `ThrottlerModule` — rate-limits all endpoints (10 req / 60 s per IP).
+ * - `ThrottlerModule` — global: 10 req / 60 s per IP.
+ *   Login route overrides to 5 req / 15 min.
  *   NOTE: uses in-memory storage by default. Replace with
  *   `ThrottlerStorageRedisService` from `@nestjs-throttler-storage-redis`
  *   for multi-instance deployments.
@@ -42,6 +46,7 @@ import { TranslationModule } from './modules/translation/translation.module';
     }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
+    EncryptionModule,
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -54,6 +59,7 @@ import { TranslationModule } from './modules/translation/translation.module';
     TranslationModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: CorrelationIdInterceptor },

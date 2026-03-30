@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChannelModule } from '../channel/channel.module';
 import { DeliveryStatusGateway } from './delivery-status.gateway';
 import { DispatchProducer } from './dispatch.producer';
+import { FailureNotificationService } from './failure-notification.service';
 import { MessageRepository } from './message.repository';
 import { QUEUE_EMAIL, QUEUE_SMS, QUEUE_WHATSAPP } from './queue.constants';
 import { EmailWorker } from './workers/email.worker';
@@ -16,6 +17,7 @@ import { WhatsAppWorker } from './workers/whatsapp.worker';
  *
  * Imports {@link ChannelModule} so workers can resolve channel adapters.
  * Registers three queues: `email-messages`, `sms-messages`, `whatsapp-messages`.
+ * Provides {@link FailureNotificationService} to notify dispatch owners on total failure.
  */
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { WhatsAppWorker } from './workers/whatsapp.worker';
     MessageRepository,
     DispatchProducer,
     DeliveryStatusGateway,
+    FailureNotificationService,
     EmailWorker,
     SmsWorker,
     WhatsAppWorker,

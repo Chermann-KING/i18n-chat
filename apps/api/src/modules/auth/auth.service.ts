@@ -9,10 +9,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser, JwtAccessPayload } from './interfaces/jwt-payload.interface';
 
-/** Access token lifetime in seconds (15 minutes). */
-const ACCESS_TOKEN_EXPIRES_IN = '15m';
-/** Access token lifetime as a number for the response (900 seconds). */
-const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 900;
+/** Access token lifetime in seconds (4 hours). */
+const ACCESS_TOKEN_EXPIRES_IN = '4h';
+/** Access token lifetime as a number for the response (14400 seconds). */
+const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 14400;
 /** Refresh token lifetime (7 days). */
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 /** Refresh token TTL in days — used to compute `expiresAt` stored in DB. */

@@ -13,6 +13,7 @@ import type {
 import type { Recipient, RecipientChannel } from '@prisma/client';
 import { MessageChannel } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/encryption/encryption.service';
 
 /** Default page size for recipient list queries. */
 const DEFAULT_PAGE = 1;
@@ -22,12 +23,15 @@ const DEFAULT_LIMIT = 20;
 /**
  * Prisma-backed implementation of {@link IRecipientRepository}.
  *
- * Contact values (email / phone) are stored as plain text in this implementation.
- * pgcrypto-based encryption will be layered on top in a future migration phase.
+ * Contact values (email / phone) are encrypted at rest using AES-256-GCM
+ * via {@link EncryptionService} before being stored, and decrypted on read.
  */
 @Injectable()
 export class RecipientRepository implements IRecipientRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryption: EncryptionService,
+  ) {}
 
   /** @inheritdoc */
   async findById(id: string): Promise<RecipientEntity | null> {
@@ -42,18 +46,24 @@ export class RecipientRepository implements IRecipientRepository {
     const skip = (page - 1) * limit;
 
     const where = {
+      isActive: options.isActive ?? true,
       ...(options.preferredLanguageCode !== undefined
         ? { preferredLanguageCode: options.preferredLanguageCode }
         : {}),
-      ...(options.isActive !== undefined ? { isActive: options.isActive } : {}),
     };
 
     const [rows, total] = await Promise.all([
-      this.prisma.recipient.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.recipient.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { channels: { where: { isActive: true } } },
+      }),
       this.prisma.recipient.count({ where }),
     ]);
 
-    return { data: rows.map((r) => this.toEntity(r)), total };
+    return { data: rows.map((r) => this.toEntity(r, r.channels)), total };
   }
 
   /** @inheritdoc */
@@ -79,7 +89,7 @@ export class RecipientRepository implements IRecipientRepository {
       data: {
         recipientId,
         channel: data.channel as unknown as MessageChannel,
-        contact: data.contact,
+        contact: this.encryption.encrypt(data.contact),
       },
     });
     return this.toChannelEntity(row);
@@ -123,22 +133,25 @@ export class RecipientRepository implements IRecipientRepository {
   }
 
   /**
-   * Maps a Prisma `Recipient` row to a domain {@link RecipientEntity}.
+   * Maps a Prisma `Recipient` row (with optional channels) to a domain {@link RecipientEntity}.
    */
-  private toEntity(row: Recipient): RecipientEntity {
+  private toEntity(row: Recipient, channels?: RecipientChannel[]): RecipientEntity {
     return {
       id: row.id,
-      fullName: row.fullName,
+      firstName: row.firstName,
+      lastName: row.lastName,
       preferredLanguageCode: row.preferredLanguageCode,
       isActive: row.isActive,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      channels: channels?.map((ch) => this.toChannelEntity(ch)),
     };
   }
 
   /**
    * Maps a Prisma `RecipientChannel` row to a domain {@link RecipientChannelEntity}.
    *
+   * The `contact` value is decrypted from AES-256-GCM ciphertext before being returned.
    * The Prisma `MessageChannel` enum is cast to the domain equivalent — both
    * share identical string values at runtime.
    */
@@ -147,7 +160,7 @@ export class RecipientRepository implements IRecipientRepository {
       id: row.id,
       recipientId: row.recipientId,
       channel: row.channel as unknown as DomainMessageChannel,
-      contact: row.contact,
+      contact: this.encryption.decrypt(row.contact),
       isActive: row.isActive,
       createdAt: row.createdAt,
     };
