@@ -4,11 +4,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { DispatchWizard } from '@/components/dispatches/dispatch-wizard';
 
 interface NewDispatchPageProps {
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 export async function generateMetadata({ params }: NewDispatchPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'dispatches' });
   return { title: t('new') };
 }
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: NewDispatchPageProps) {
  * New dispatch page — hosts the multi-step wizard (template → variables → recipients → review).
  */
 export default async function NewDispatchPage({ params }: NewDispatchPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'dispatches' });
 
   return (

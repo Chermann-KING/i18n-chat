@@ -4,11 +4,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { SettingsView } from '@/components/settings/settings-view';
 
 interface SettingsPageProps {
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 export async function generateMetadata({ params }: SettingsPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'settings' });
   return { title: t('title') };
 }
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: SettingsPageProps) {
  * Settings page — profile, password, preferences and notifications.
  */
 export default async function SettingsPage({ params }: SettingsPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'settings' });
 
   return (

@@ -4,11 +4,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { DispatchHistory } from '@/components/dispatches/dispatch-history';
 
 interface DispatchesPageProps {
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 export async function generateMetadata({ params }: DispatchesPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'dispatches' });
   return { title: t('title') };
 }
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: DispatchesPageProps) {
  * Dispatch history page — lists all dispatches with status badges and CSV export.
  */
 export default async function DispatchesPage({ params }: DispatchesPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'dispatches' });
 
   return (

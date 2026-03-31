@@ -3,7 +3,7 @@ import type { SupportedLocale } from '@/i18n/routing';
 import { LoginForm } from '@/components/auth/login-form';
 
 interface LoginPageProps {
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 /**
@@ -11,13 +11,13 @@ interface LoginPageProps {
  * Renders a centred card with the `LoginForm` client component.
  */
 export async function generateMetadata({ params }: LoginPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'auth' });
   return { title: t('login') };
 }
 
 export default async function LoginPage({ params }: LoginPageProps) {
-  const { locale } = await params;
+  const { locale } = (await params) as { locale: SupportedLocale };
   const t = await getTranslations({ locale, namespace: 'auth' });
 
   return (
