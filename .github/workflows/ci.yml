@@ -165,7 +165,7 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE_API) || '' }}
           cache-from: type=gha,scope=api
           cache-to:   type=gha,mode=max,scope=api
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
 
       # ── Web image ────────────────────────────────────────────────────────
       - name: Build and push web image
@@ -180,6 +180,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE_WEB) || '' }}
           cache-from: type=gha,scope=web
           cache-to:   type=gha,mode=max,scope=web
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           build-args: |
             NEXT_PUBLIC_API_URL=/api/v1
