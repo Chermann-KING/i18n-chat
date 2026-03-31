@@ -4,11 +4,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { RecipientsView } from '@/components/recipients/recipients-view';
 
 interface RecipientsPageProps {
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 export async function generateMetadata({ params }: RecipientsPageProps) {
-  const { locale } = await params;
+  const locale = (await params).locale as SupportedLocale;
   const t = await getTranslations({ locale, namespace: 'nav' });
   return { title: t('recipients') };
 }
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: RecipientsPageProps) {
  * Recipients management page — lists recipients and allows CRUD operations.
  */
 export default async function RecipientsPage({ params }: RecipientsPageProps) {
-  const { locale } = await params;
+  const locale = (await params).locale as SupportedLocale;
   const t = await getTranslations({ locale, namespace: 'nav' });
 
   return (

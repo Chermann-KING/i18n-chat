@@ -8,7 +8,7 @@ interface DispatchDetailPageProps {
 }
 
 export async function generateMetadata({ params }: DispatchDetailPageProps) {
-  const { locale } = await params;
+  const locale = (await params).locale as SupportedLocale;
   const t = await getTranslations({ locale, namespace: 'dispatches' });
   return { title: t('title') };
 }

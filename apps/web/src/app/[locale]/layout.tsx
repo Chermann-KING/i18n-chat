@@ -5,7 +5,7 @@ import { dirAttr } from '@/lib/rtl';
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ locale: SupportedLocale }>;
+  params: Promise<{ locale: string }>;
 }
 
 /**
@@ -14,7 +14,7 @@ interface LocaleLayoutProps {
  * ThemeProvider lives in the root layout so it survives locale switches.
  */
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
-  const { locale } = await params;
+  const locale = (await params).locale as SupportedLocale;
   const messages = await getMessages();
 
   return (
