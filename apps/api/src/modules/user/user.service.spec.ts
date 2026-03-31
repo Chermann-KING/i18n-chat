@@ -24,6 +24,7 @@ const mockUser: User = {
   lastName: null,
   preferredLanguageCode: 'fr',
   notifyOnFailure: false,
+  mustChangePassword: false,
   isActive: true,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
