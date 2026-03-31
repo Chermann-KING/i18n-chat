@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppException, NotFoundException } from '@i18n-chat/domain';
 import type {
   TChangePassword,
@@ -13,6 +14,7 @@ import type { User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { EmailChannel } from '../channel/email/email.channel';
 
 /**
  * Business logic for staff user management.
@@ -23,9 +25,13 @@ import { AuditService } from '../audit/audit.service';
  */
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly email: EmailChannel,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -63,6 +69,9 @@ export class UserService {
         passwordHash,
         role: (data.role as unknown as UserRole) ?? UserRole.SENDER,
         preferredLanguageCode: data.preferredLanguageCode ?? 'fr',
+        mustChangePassword: true,
+        ...(data.firstName !== undefined && { firstName: data.firstName }),
+        ...(data.lastName !== undefined && { lastName: data.lastName }),
       },
     });
 
@@ -74,7 +83,52 @@ export class UserService {
       metadata: { email: user.email, role: user.role },
     });
 
+    await this.sendWelcomeEmail(user.email, data.password, user.firstName, user.lastName);
+
     return this.toResponse(user);
+  }
+
+  /**
+   * Sends a welcome email to a newly created agent.
+   *
+   * The email contains the login URL and the temporary password set by the
+   * admin. Failures are logged but do NOT roll back the account creation —
+   * the admin can always reset the password manually.
+   *
+   * @param to - The new agent's email address.
+   * @param temporaryPassword - The plain-text password set by the admin.
+   * @param firstName - Optional first name for personalisation.
+   * @param lastName - Optional last name for personalisation.
+   */
+  private async sendWelcomeEmail(
+    to: string,
+    temporaryPassword: string,
+    firstName: string | null,
+    lastName: string | null,
+  ): Promise<void> {
+    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
+    const fullName = [firstName, lastName].filter(Boolean).join(' ');
+    const greeting = fullName ? `Bonjour ${fullName},` : 'Bonjour,';
+    const subject = 'Votre compte i18n-chat a été créé';
+    const body = [
+      greeting,
+      ``,
+      `Un compte a été créé pour vous sur i18n-chat.`,
+      ``,
+      `E-mail    : ${to}`,
+      `Mot de passe temporaire : ${temporaryPassword}`,
+      ``,
+      `Connectez-vous ici : ${appUrl}`,
+      ``,
+      `Nous vous recommandons de changer votre mot de passe dès votre première connexion`,
+      `via Paramètres > Mot de passe.`,
+    ].join('\n');
+
+    try {
+      await this.email.send({ contact: to, subject, body });
+    } catch (err) {
+      this.logger.warn(`Welcome email failed for ${to}: ${(err as Error).message}`);
+    }
   }
 
   /**
@@ -186,7 +240,10 @@ export class UserService {
     }
 
     const passwordHash = await argon2.hash(data.newPassword);
-    const updated = await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, mustChangePassword: false },
+    });
 
     await this.audit.log({
       userId: id,
@@ -196,6 +253,18 @@ export class UserService {
     });
 
     return this.toResponse(updated);
+  }
+
+  /**
+   * Dismisses the first-login password prompt without changing the password.
+   *
+   * The user chose "Later" — the prompt is cleared so it does not reappear
+   * on subsequent sessions.
+   *
+   * @param id - UUID of the authenticated user.
+   */
+  async dismissPasswordPrompt(id: string): Promise<void> {
+    await this.prisma.user.update({ where: { id }, data: { mustChangePassword: false } });
   }
 
   /**
@@ -237,6 +306,7 @@ export class UserService {
       role: user.role as unknown as TUserResponse['role'],
       preferredLanguageCode: user.preferredLanguageCode,
       notifyOnFailure: user.notifyOnFailure,
+      mustChangePassword: user.mustChangePassword,
       isActive: user.isActive,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),

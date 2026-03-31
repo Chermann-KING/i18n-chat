@@ -41,7 +41,7 @@ const MESSAGE_ENTITY: MessageEntity = {
   id: MSG_ID,
   dispatchId: DISPATCH_ID,
   recipientId: RECIPIENT_ID,
-  recipientName: 'Alice Dupont',
+  recipientName: 'Chermann KING',
   anonymousTargetId: null,
   anonymousContact: null,
   channel: MessageChannel.EMAIL,
@@ -96,8 +96,8 @@ function buildRecipientRepoMock(): jest.Mocked<RecipientRepository> {
     findManyByIds: jest.fn().mockResolvedValue([
       {
         id: RECIPIENT_ID,
-        firstName: 'Alice',
-        lastName: 'Dupont',
+        firstName: 'Chermann',
+        lastName: 'KING',
         preferredLanguageCode: 'fr',
         isActive: true,
         createdAt: new Date(),
@@ -109,7 +109,7 @@ function buildRecipientRepoMock(): jest.Mocked<RecipientRepository> {
         id: 'ch-uuid',
         recipientId: RECIPIENT_ID,
         channel: MessageChannel.EMAIL,
-        contact: 'alice@example.com',
+        contact: 'chermann@example.com',
         isActive: true,
         createdAt: new Date(),
       },
@@ -224,7 +224,7 @@ describe('DispatchService — createDispatch (REGISTERED)', () => {
         templateId: 'tpl-uuid',
         recipientIds: [RECIPIENT_ID],
         globalVariables: { date: '01/04' },
-        recipientVariables: { [RECIPIENT_ID]: { prenom: 'Alice' } },
+        recipientVariables: { [RECIPIENT_ID]: { prenom: 'Chermann' } },
       },
       USER_ID,
     );
@@ -232,7 +232,7 @@ describe('DispatchService — createDispatch (REGISTERED)', () => {
     expect(mocks.translationSvc.resolveTranslation).toHaveBeenCalledWith(
       'tpl-uuid',
       'fr',
-      expect.objectContaining({ date: '01/04', prenom: 'Alice' }),
+      expect.objectContaining({ date: '01/04', prenom: 'Chermann' }),
       expect.any(Array),
     );
   });

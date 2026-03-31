@@ -32,8 +32,12 @@ export function LoginForm({ locale }: LoginFormProps) {
     setLoading(true);
 
     try {
-      await bffPost(BFF_ROUTES.AUTH.LOGIN, { email, password });
-      router.push(`/${locale}/dispatches`);
+      const result = await bffPost<{ preferredLanguageCode: string }>(BFF_ROUTES.AUTH.LOGIN, {
+        email,
+        password,
+      });
+      const targetLocale = result.preferredLanguageCode ?? locale;
+      router.push(`/${targetLocale}/dispatches`);
     } catch (err) {
       if (err instanceof BffError && err.status === 401) {
         setError(t('invalidCredentials'));

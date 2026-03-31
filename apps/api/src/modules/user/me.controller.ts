@@ -73,6 +73,20 @@ export class MeController {
   }
 
   /**
+   * Dismisses the first-login password-change prompt.
+   *
+   * Called when the user clicks "Later" on the first-login modal.
+   * Sets `mustChangePassword = false` so the prompt does not reappear.
+   */
+  @Patch('password-prompt')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Dismiss first-login password prompt' })
+  @ApiResponse({ status: 204, description: 'Prompt dismissed' })
+  async dismissPasswordPrompt(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.userService.dismissPasswordPrompt(user.id);
+  }
+
+  /**
    * Updates the authenticated user's notification preferences.
    *
    * @param body - Notification preference payload.

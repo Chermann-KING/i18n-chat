@@ -1,11 +1,13 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@i18n-chat/domain';
 import { UserRole } from '@prisma/client';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { EmailChannel } from '../channel/email/email.channel';
 import { UserService } from './user.service';
 
 // Jest hoists jest.mock() calls automatically — placing after imports is safe.
@@ -46,6 +48,11 @@ describe('UserService', () => {
         UserService,
         { provide: PrismaService, useValue: { user: userMock } },
         { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+        { provide: EmailChannel, useValue: { send: jest.fn().mockResolvedValue('msg-id') } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('http://localhost:3000') },
+        },
       ],
     }).compile();
 

@@ -399,7 +399,7 @@ export class DispatchService {
   /**
    * Extracts Handlebars variable values in the order they appear in the template body.
    *
-   * @example extractHbsValues('Hello {{name}}!', { name: 'Alice' }) // → ['Alice']
+   * @example extractHbsValues('Hello {{name}}!', { name: 'Chermann' }) // → ['Chermann']
    */
   private extractHbsValues(body: string, variables: Record<string, string>): string[] {
     const matches = body.match(/\{\{(\w+)\}\}/g) ?? [];

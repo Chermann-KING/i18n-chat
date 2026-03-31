@@ -17,6 +17,7 @@ export const BFF_ROUTES = {
     ME_PROFILE: '/api/users/me/profile',
     ME_PASSWORD: '/api/users/me/password',
     ME_NOTIFICATIONS: '/api/users/me/notifications',
+    ME_PASSWORD_PROMPT: '/api/users/me/password-prompt',
   },
   LANGUAGES: {
     BASE: '/api/languages',

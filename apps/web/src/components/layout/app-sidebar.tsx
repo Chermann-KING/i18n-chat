@@ -3,11 +3,22 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Send, History, FileText, Users, Settings, LogOut, MessageSquare } from 'lucide-react';
+import {
+  Send,
+  History,
+  FileText,
+  Users,
+  Settings,
+  LogOut,
+  MessageSquare,
+  UserCog,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { bffPost } from '@/lib/bff-client';
+import { bffGet, bffPost } from '@/lib/bff-client';
 import { BFF_ROUTES } from '@/lib/constants/bff-routes';
+import { QUERY_KEYS } from '@/lib/constants/query-keys';
 import type { SupportedLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -56,17 +67,28 @@ function NavLinks({ navItems, pathname }: { navItems: NavItem[]; pathname: strin
  * - Desktop (md+): always visible as a static sidebar.
  * - Mobile: hidden by default, slides in as a fixed drawer controlled by
  *   {@link useSidebarStore}. A semi-transparent backdrop closes it on tap.
+ * - The "Agents" link is only rendered for users with the ADMIN role.
  */
 export function AppSidebar({ locale }: AppSidebarProps) {
   const t = useTranslations('nav');
+  const tu = useTranslations('users');
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
+
+  const { data: me } = useQuery<{ role: string }>({
+    queryKey: QUERY_KEYS.users.me(),
+    queryFn: () => bffGet<{ role: string }>(BFF_ROUTES.USERS.ME),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isAdmin = me?.role === 'ADMIN';
 
   const navItems: NavItem[] = [
     { href: `/${locale}/dispatches/new`, label: t('dispatch'), icon: Send },
     { href: `/${locale}/dispatches`, label: t('history'), icon: History },
     { href: `/${locale}/templates`, label: t('templates'), icon: FileText },
     { href: `/${locale}/recipients`, label: t('recipients'), icon: Users },
+    ...(isAdmin ? [{ href: `/${locale}/users`, label: tu('title'), icon: UserCog }] : []),
   ];
 
   // Close drawer on route change (mobile navigation).

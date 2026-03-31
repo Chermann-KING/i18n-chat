@@ -47,6 +47,7 @@ CREATE TABLE "users" (
     "role" "UserRole" NOT NULL DEFAULT 'SENDER',
     "preferredLanguageCode" VARCHAR(10) NOT NULL DEFAULT 'fr',
     "notifyOnFailure" BOOLEAN NOT NULL DEFAULT false,
+    "mustChangePassword" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -94,7 +95,7 @@ CREATE TABLE "recipient_channels" (
 -- CreateTable
 CREATE TABLE "templates" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-    "name" TEXT NOT NULL DEFAULT '',
+    "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "category" TEXT NOT NULL DEFAULT 'general',
     "fallbackLanguageCode" TEXT NOT NULL DEFAULT 'en',

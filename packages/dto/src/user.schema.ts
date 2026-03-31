@@ -18,6 +18,10 @@ export const CreateUserSchema = z.object({
   role: z.nativeEnum(UserRole).optional(),
   /** ISO 639-1 code, e.g. `'fr'`. Defaults to `'fr'` when omitted. */
   preferredLanguageCode: z.string().min(2).max(10).optional(),
+  /** Agent's first name — used to personalise the welcome email. */
+  firstName: z.string().min(1).max(100).optional(),
+  /** Agent's last name — used to personalise the welcome email. */
+  lastName: z.string().min(1).max(100).optional(),
 });
 
 /** Validation schema for updating an existing staff user (admin only). */
@@ -36,12 +40,27 @@ export const UpdateProfileSchema = z.object({
   preferredLanguageCode: z.string().min(2).max(10).optional(),
 });
 
+/**
+ * Password strength rules (enforced both client-side for UX and server-side for security).
+ * - At least 8 characters
+ * - At least one uppercase letter
+ * - At least one digit
+ * - At least one special character
+ */
+export const PASSWORD_RULES = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH)
+  .max(PASSWORD_MAX_LENGTH)
+  .regex(/[A-Z]/, 'At least one uppercase letter required')
+  .regex(/[0-9]/, 'At least one digit required')
+  .regex(/[^A-Za-z0-9]/, 'At least one special character required');
+
 /** Schema for changing the authenticated user's password. */
 export const ChangePasswordSchema = z.object({
   /** The user's current password (used to verify identity). */
   currentPassword: z.string().min(1),
-  /** The new password to set. */
-  newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+  /** The new password to set. Must satisfy {@link PASSWORD_RULES}. */
+  newPassword: PASSWORD_RULES,
 });
 
 /** Schema for updating the authenticated user's notification preferences. */
@@ -59,6 +78,7 @@ export const UserResponseSchema = z.object({
   role: z.nativeEnum(UserRole),
   preferredLanguageCode: z.string(),
   notifyOnFailure: z.boolean(),
+  mustChangePassword: z.boolean(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

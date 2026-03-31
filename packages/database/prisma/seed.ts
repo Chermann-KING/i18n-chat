@@ -60,6 +60,7 @@ async function main(): Promise<void> {
       passwordHash,
       role: UserRole.ADMIN,
       preferredLanguageCode: 'fr',
+      mustChangePassword: true,
     },
   });
 

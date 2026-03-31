@@ -50,5 +50,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     maxAge: REFRESH_TOKEN_MAX_AGE,
   });
 
-  return NextResponse.json({ ok: true });
+  // Fetch the user profile to get the preferred locale and first-login flag.
+  // The cookie is already set above so this server-side fetch can use it directly.
+  const meResponse = await fetch(API_ROUTES.USERS.ME, {
+    headers: { Authorization: `Bearer ${data.accessToken}` },
+  });
+
+  if (meResponse.ok) {
+    const me = (await meResponse.json()) as {
+      preferredLanguageCode: string;
+      mustChangePassword: boolean;
+    };
+    return NextResponse.json({
+      ok: true,
+      preferredLanguageCode: me.preferredLanguageCode,
+      mustChangePassword: me.mustChangePassword,
+    });
+  }
+
+  return NextResponse.json({ ok: true, preferredLanguageCode: 'fr', mustChangePassword: false });
 }

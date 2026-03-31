@@ -48,6 +48,9 @@ model User {
   preferredLanguageCode String   @default("fr") @db.VarChar(10)
   /// When true, the user receives an email when one of their dispatches fails.
   notifyOnFailure       Boolean  @default(false)
+  /// When true, the user is prompted to change their password on first login.
+  /// Set to true by UserService.create(); cleared when the password is changed or the prompt is dismissed.
+  mustChangePassword    Boolean  @default(false)
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -321,7 +324,7 @@ model DispatchVariableSet {
   /// Null = global values for all recipients in this dispatch.
   recipientId       String? @db.Uuid
   anonymousTargetId String? @db.Uuid
-  /// Map of variable key → value, e.g. {"prenom": "Jean", "date": "30/03/2026"}.
+  /// Map of variable key → value, e.g. {"prenom": "Chermann", "date": "30/03/2026"}.
   variables         Json
 
   dispatch        Dispatch         @relation(fields: [dispatchId], references: [id], onDelete: Cascade)

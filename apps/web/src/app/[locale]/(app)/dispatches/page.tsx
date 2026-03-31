@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import type { SupportedLocale } from '@/i18n/routing';
 import { Topbar } from '@/components/layout/topbar';
 import { DispatchHistory } from '@/components/dispatches/dispatch-history';
+import { FirstLoginModal } from '@/components/dispatches/first-login-modal';
 
 interface DispatchesPageProps {
   params: Promise<{ locale: string }>;
@@ -26,6 +27,7 @@ export default async function DispatchesPage({ params }: DispatchesPageProps) {
       <main className="flex-1 overflow-auto p-4 sm:p-6">
         <DispatchHistory locale={locale} />
       </main>
+      <FirstLoginModal />
     </>
   );
 }

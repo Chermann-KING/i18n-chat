@@ -19,6 +19,7 @@ export const API_ROUTES = {
     ME_PROFILE: `${API_BASE_URL}/users/me/profile`,
     ME_PASSWORD: `${API_BASE_URL}/users/me/password`,
     ME_NOTIFICATIONS: `${API_BASE_URL}/users/me/notifications`,
+    ME_PASSWORD_PROMPT: `${API_BASE_URL}/users/me/password-prompt`,
   },
   LANGUAGES: {
     BASE: `${API_BASE_URL}/languages`,
