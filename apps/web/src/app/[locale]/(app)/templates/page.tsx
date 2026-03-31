@@ -4,11 +4,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { TemplatesView } from '@/components/templates/templates-view';
 
 interface TemplatesPageProps {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: SupportedLocale }>;
 }
 
 export async function generateMetadata({ params }: TemplatesPageProps) {
-  const { locale } = (await params) as { locale: SupportedLocale };
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'nav' });
   return { title: t('templates') };
 }
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: TemplatesPageProps) {
  * Templates management page — lists message templates and their translations.
  */
 export default async function TemplatesPage({ params }: TemplatesPageProps) {
-  const { locale } = (await params) as { locale: SupportedLocale };
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'nav' });
 
   return (

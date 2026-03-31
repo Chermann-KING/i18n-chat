@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import type { SupportedLocale } from '@/i18n/routing';
 
 interface LocalePageProps {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: SupportedLocale }>;
 }
 
 /**
@@ -10,6 +10,6 @@ interface LocalePageProps {
  * The auth guard in the app layout (Phase 8.2) handles authenticated redirects.
  */
 export default async function LocalePage({ params }: LocalePageProps): Promise<never> {
-  const { locale } = (await params) as { locale: SupportedLocale };
+  const { locale } = await params;
   redirect(`/${locale}/login`);
 }

@@ -7,7 +7,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: SupportedLocale }>;
 }
 
 /**
@@ -16,7 +16,7 @@ interface AppLayoutProps {
  * Wraps authenticated content with React Query providers and the sidebar.
  */
 export default async function AppLayout({ children, params }: AppLayoutProps) {
-  const { locale } = (await params) as { locale: SupportedLocale };
+  const { locale } = await params;
   const cookieStore = await cookies();
   const hasToken = cookieStore.has(ACCESS_TOKEN_COOKIE);
 

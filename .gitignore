@@ -40,6 +40,7 @@ Thumbs.db
 
 # Test coverage
 coverage/
+playwright-report/
 
 # TypeScript incremental compilation
 *.tsbuildinfo

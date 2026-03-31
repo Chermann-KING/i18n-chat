@@ -4,7 +4,7 @@ import { Topbar } from '@/components/layout/topbar';
 import { DispatchDetail } from '@/components/dispatches/dispatch-detail';
 
 interface DispatchDetailPageProps {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: SupportedLocale; id: string }>;
 }
 
 export async function generateMetadata({ params }: DispatchDetailPageProps) {
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: DispatchDetailPageProps) {
  * Dispatch detail page — shows status and real-time delivery updates via WebSocket.
  */
 export default async function DispatchDetailPage({ params }: DispatchDetailPageProps) {
-  const { locale, id } = (await params) as { locale: SupportedLocale; id: string };
+  const { locale, id } = await params;
   const t = await getTranslations({ locale, namespace: 'dispatches' });
 
   return (
