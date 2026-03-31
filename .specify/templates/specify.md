@@ -29,11 +29,11 @@ in multiple languages themselves.
 
 ## 3. Users & Roles
 
-| Role     | Description                                                            |
-| -------- | ---------------------------------------------------------------------- |
-| `admin`  | Manages the platform: users, languages, templates, WhatsApp approvals. |
-| `sender` | Composes and dispatches messages to recipients.                        |
-| `viewer` | Read-only access to dispatch history and delivery reports.             |
+| Role     | Description                                                                         |
+| -------- | ----------------------------------------------------------------------------------- |
+| `ADMIN`  | Manages the platform: agents, languages, templates, recipients, WhatsApp approvals. |
+| `SENDER` | Composes and dispatches messages to recipients.                                     |
+| `VIEWER` | Read-only access to dispatch history and delivery reports.                          |
 
 ---
 
@@ -55,7 +55,7 @@ The platform must support at minimum:
 Additional languages can be added by an admin at any time.
 
 **Fallback rule**: when no translation exists for a recipient's language, the message is delivered
-in **English** (`en`). This is configurable per template.
+in the template's configured fallback language (default: **English** `en`).
 
 ---
 
@@ -79,15 +79,17 @@ dispatch creation time.
 A **template** is a reusable message structure created and translated by the admin.
 Templates may include dynamic variables using Handlebars syntax: `{{variableName}}`.
 
+Variables have a **type** (TEXT / NUMBER / DATE / TIME) and a **source**:
+
+- `MANUAL` — the sender types the value at dispatch time.
+- `RECIPIENT_FIELD` — auto-injected from the recipient's profile (`firstName`, `lastName`).
+
 Examples:
 
 ```
 "Bonjour {{prenom}}, votre rendez-vous est confirmé pour le {{date}} à {{lieu}}."
 "Beste {{prenom}}, uw afspraak is bevestigd op {{datum}} om {{tijdstip}}."
 ```
-
-Variable values are provided by the sender at dispatch creation time, either globally
-(same value for all recipients) or per recipient.
 
 Templates used on **WhatsApp** must be submitted to and approved by Meta before use.
 Each language version is a separate submission.
@@ -117,11 +119,9 @@ The sender toggles between two recipient modes when composing a dispatch:
 
 Profiles stored in the platform's database. Each profile holds:
 
-- Full name
+- First name + last name
 - Preferred language
 - One or more channel contacts (email / phone number)
-
-Senders search, filter, or import recipient lists from the database.
 
 ### 7.2 Anonymous recipients
 
@@ -165,17 +165,17 @@ This data is purged automatically after **30 days** (GDPR compliance).
 ### US-03 — Admin manages templates
 
 1. Admin navigates to "Templates".
-2. Admin creates a new template: sets slug, category, and variable schema.
-3. Admin adds translations for each supported language.
-4. For WhatsApp-eligible templates: Admin submits translations to Meta for approval.
-5. Admin monitors approval status per language.
-6. Once approved, the template becomes available to senders for WhatsApp dispatches.
+2. Admin creates a new template: name, slug, category, fallback language, and variable schema.
+3. For each variable, Admin sets its type (TEXT / NUMBER / DATE / TIME) and source (MANUAL or RECIPIENT_FIELD).
+4. Admin adds translations for each supported language (with per-language variable labels).
+5. For WhatsApp-eligible templates: Admin submits translations to Meta for approval.
+6. Admin monitors approval status per language.
+7. Once approved, the template becomes available to senders for WhatsApp dispatches.
 
 ### US-04 — Admin manages recipients
 
-1. Admin creates, edits, or deactivates recipient profiles.
-2. Admin adds channel contacts per recipient.
-3. Admin imports recipients via CSV.
+1. Admin creates, edits, or deactivates recipient profiles (first name, last name, preferred language).
+2. Admin adds channel contacts per recipient (email / phone / WhatsApp number).
 
 ### US-05 — Viewer monitors delivery
 
@@ -184,20 +184,39 @@ This data is purged automatically after **30 days** (GDPR compliance).
 3. Viewer opens a dispatch to see per-message delivery status (sent / delivered / failed).
 4. Viewer exports a delivery report as CSV.
 
+### US-06 — Admin manages staff agents
+
+1. Admin navigates to "Agents" (visible to ADMIN role only).
+2. Admin creates a new agent: email, optional first/last name, role, preferred interface language, temporary password.
+3. The new agent receives a **personalized welcome email** with their credentials and the login URL.
+4. On first login to the application, the agent is shown a **password change modal** displaying the complexity rules. The agent can change their password immediately or dismiss it permanently ("Later").
+5. The interface redirects the agent to their **preferred locale** after login.
+6. Admin can edit an agent's role or reset their password at any time.
+7. Admin can deactivate or reactivate an agent (soft-delete — FK references are preserved).
+
+### US-07 — Agent manages their own profile and preferences
+
+1. Agent navigates to "Settings".
+2. Agent updates their display name (first name, last name).
+3. Agent changes their password (current password required; complexity rules: 8+ chars, uppercase, digit, special character).
+4. Agent sets their preferred interface language and display theme (light / dark / system).
+5. Agent configures email notification on dispatch failure.
+
 ---
 
 ## 9. Non-Functional Requirements
 
-| Category             | Requirement                                                             |
-| -------------------- | ----------------------------------------------------------------------- |
-| Security             | Authentication required for all routes. RBAC enforced per endpoint.     |
-| GDPR                 | Anonymous targets deleted after 30 days. Audit log for all mutations.   |
-| Availability         | 99.5 % uptime SLA (on-premise and cloud deployments).                   |
-| Scalability          | Support dispatches of up to 10 000 recipients without degradation.      |
-| Observability        | Structured JSON logs, correlation IDs on every request and job.         |
-| Internationalisation | Staff UI available in French, Dutch, and English.                       |
-| Accessibility        | WCAG 2.1 AA for the web interface.                                      |
-| Portability          | Full deployment via Docker Compose (on-premise) and Kubernetes (cloud). |
+| Category             | Requirement                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Security             | Authentication required for all routes. RBAC enforced per endpoint.                                              |
+| Password policy      | Minimum 8 characters, maximum 128. Must include at least one uppercase letter, one digit, one special character. |
+| GDPR                 | Anonymous targets deleted after 30 days. Audit log for all mutations (append-only).                              |
+| Availability         | 99.5 % uptime SLA (on-premise and cloud deployments).                                                            |
+| Scalability          | Support dispatches of up to 10 000 recipients without degradation.                                               |
+| Observability        | Structured JSON logs (Pino), correlation IDs on every request and job.                                           |
+| Internationalisation | Staff UI available in French, Dutch, and English. Login redirects to agent's preferred locale.                   |
+| Accessibility        | WCAG 2.1 AA for the web interface.                                                                               |
+| Portability          | Full deployment via Docker Compose (on-premise) and Kubernetes (cloud).                                          |
 
 ---
 
@@ -208,3 +227,4 @@ This data is purged automatically after **30 days** (GDPR compliance).
 - Voice calls.
 - AI-generated message content.
 - Self-service recipient registration.
+- CSV import for recipients.
