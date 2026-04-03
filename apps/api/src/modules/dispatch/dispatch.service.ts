@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   ANONYMOUS_TARGET_TTL_DAYS,
   AppException,
@@ -6,9 +6,11 @@ import {
   MessageChannel,
   NotFoundException,
   RecipientMode,
+  TRANSLATION_PROVIDER,
   VariableSource,
 } from '@i18n-chat/domain';
 import type {
+  ITranslationProvider,
   AnonymousTargetEntity,
   DispatchEntity,
   FindDispatchesOptions,
@@ -22,7 +24,6 @@ import type { TCreateDispatch, TDispatchResponse, TDispatchTarget } from '@i18n-
 import { RecipientRepository } from '../recipient/recipient.repository';
 import { TemplateRepository } from '../template/template.repository';
 import { TranslationService } from '../template/translation.service';
-import { LibreTranslateService } from '../translation/libre-translate.service';
 import { DispatchRepository } from './dispatch.repository';
 import { MessageRepository } from './message.repository';
 import { DispatchProducer } from './dispatch.producer';
@@ -49,7 +50,7 @@ export class DispatchService {
     private readonly recipientRepo: RecipientRepository,
     private readonly templateRepo: TemplateRepository,
     private readonly translationSvc: TranslationService,
-    private readonly libretranslate: LibreTranslateService,
+    @Inject(TRANSLATION_PROVIDER) private readonly translationProvider: ITranslationProvider,
     private readonly producer: DispatchProducer,
     private readonly audit: AuditService,
   ) {}
@@ -357,7 +358,7 @@ export class DispatchService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  /** Resolves the final message body and optional subject via template rendering or LibreTranslate. */
+  /** Resolves the final message body and optional subject via template rendering or machine translation. */
   private async resolveContent(
     dispatch: DispatchEntity,
     languageCode: string,
@@ -373,7 +374,7 @@ export class DispatchService {
       );
     }
     return {
-      body: await this.libretranslate.translate(dispatch.freeTextOriginal ?? '', languageCode),
+      body: await this.translationProvider.translate(dispatch.freeTextOriginal ?? '', languageCode),
     };
   }
 
