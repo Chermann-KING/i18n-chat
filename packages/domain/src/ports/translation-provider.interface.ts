@@ -1,8 +1,22 @@
 /**
+ * NestJS injection token for the active {@link ITranslationProvider} implementation.
+ *
+ * Bind a concrete adapter in `TranslationModule`:
+ * ```ts
+ * { provide: TRANSLATION_PROVIDER, useClass: ModernMtService }
+ * ```
+ * Inject it in consumers:
+ * ```ts
+ * @Inject(TRANSLATION_PROVIDER) private readonly translator: ITranslationProvider
+ * ```
+ */
+export const TRANSLATION_PROVIDER = Symbol('ITranslationProvider');
+
+/**
  * Port interface for machine-translation providers.
  *
- * The production implementation uses self-hosted LibreTranslate (0 €, GDPR-compliant).
- * A stub/mock implementation is used during testing.
+ * Current adapters: `LibreTranslateService`, `ModernMtService`.
+ * Swap the active adapter by rebinding {@link TRANSLATION_PROVIDER} in `TranslationModule`.
  */
 export interface ITranslationProvider {
   /**

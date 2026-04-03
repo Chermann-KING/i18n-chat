@@ -17,6 +17,7 @@ export { TemplateTranslationNotFoundException } from './exceptions/template-tran
 
 // ─── Port Interfaces ──────────────────────────────────────────────────────────
 export type { IMessageChannel, SendMessagePayload } from './ports/message-channel.interface';
+export { TRANSLATION_PROVIDER } from './ports/translation-provider.interface';
 export type { ITranslationProvider } from './ports/translation-provider.interface';
 export type { PagedResult } from './ports/paged-result.type';
 export type {
