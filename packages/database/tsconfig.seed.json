@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "outDir": "dist-seed",
     "rootDir": ".",
+    "types": ["node"],
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },

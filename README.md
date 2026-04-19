@@ -29,8 +29,8 @@ cp apps/api/.env.example apps/api/.env
 docker compose -f infra/compose/docker-compose.yml --profile dev up -d
 
 # 4. Apply database schema and seed reference data
-pnpm --filter @i18n-chat/database prisma migrate dev
-pnpm --filter @i18n-chat/database prisma db seed
+pnpm --filter @i18n-chat/database db:migrate
+pnpm --filter @i18n-chat/database db:seed
 
 # 5. Start all applications in development mode
 pnpm dev
@@ -113,13 +113,16 @@ The database schema lives in `packages/database/prisma/schema.prisma`. Migration
 
 ```bash
 # Create and apply a new migration
-pnpm --filter @i18n-chat/database prisma migrate dev --name <migration-name>
+pnpm --filter @i18n-chat/database db:migrate
+
+# Create a migration with a custom name
+pnpm --filter @i18n-chat/database exec prisma migrate dev --name <migration-name>
 
 # Apply migrations in production (no interactive prompt)
-pnpm --filter @i18n-chat/database prisma migrate deploy
+pnpm --filter @i18n-chat/database db:migrate:prod
 
 # Open Prisma Studio (visual DB browser)
-pnpm --filter @i18n-chat/database prisma studio
+pnpm --filter @i18n-chat/database db:studio
 ```
 
 The seed script (`packages/database/prisma/seed.ts`) inserts the supported languages and a default admin user. Credentials for the seeded admin are printed to the console during seeding.
@@ -182,4 +185,4 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push to `
 3. Unit tests with coverage upload
 4. Docker image build and push to GitHub Container Registry (push to `main` only)
 
-Images are tagged with the short commit SHA and `latest` (main branch only). Multi-platform builds target `linux/amd64` and `linux/arm64`.
+Images are tagged with the short commit SHA and `latest` (main branch only). Builds target `linux/amd64`.

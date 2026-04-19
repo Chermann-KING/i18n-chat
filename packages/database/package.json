@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@i18n-chat/config": "workspace:*",
+    "@types/node": "^22.19.15",
     "argon2": "^0.43.0",
     "prisma": "^6.5.0",
     "ts-node": "^10.9.2",
