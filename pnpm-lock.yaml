@@ -320,6 +320,9 @@ importers:
       '@i18n-chat/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: ^22.19.15
+        version: 22.19.15
       argon2:
         specifier: ^0.43.0
         version: 0.43.1
