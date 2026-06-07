@@ -123,11 +123,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Normalize image names (GHCR requires lowercase)
+      - name: Normalize image names and compute safe tag
+        id: normalize
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "IMAGE_API=ghcr.io/${OWNER}/i18n-chat-api" >> $GITHUB_ENV
           echo "IMAGE_WEB=ghcr.io/${OWNER}/i18n-chat-web" >> $GITHUB_ENV
+          # On PRs github.ref_name is "1/merge" — replace / with - to get a valid Docker tag
+          REF="${{ github.head_ref || github.ref_name }}"
+          echo "image_tag=$(echo "${REF}" | tr '/' '-')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -161,7 +165,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_API }}:sha-${{ github.sha }}
-            ${{ env.IMAGE_API }}:${{ github.ref_name }}
+            ${{ env.IMAGE_API }}:${{ steps.normalize.outputs.image_tag }}
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE_API) || '' }}
           cache-from: type=gha,scope=api
           cache-to:   type=gha,mode=max,scope=api
@@ -176,7 +180,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_WEB }}:sha-${{ github.sha }}
-            ${{ env.IMAGE_WEB }}:${{ github.ref_name }}
+            ${{ env.IMAGE_WEB }}:${{ steps.normalize.outputs.image_tag }}
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE_WEB) || '' }}
           cache-from: type=gha,scope=web
           cache-to:   type=gha,mode=max,scope=web

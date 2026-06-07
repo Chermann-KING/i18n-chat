@@ -6,6 +6,7 @@ import {
   MessageStatus,
   NotFoundException,
   RecipientMode,
+  TRANSLATION_PROVIDER,
 } from '@i18n-chat/domain';
 import type { DispatchEntity, MessageEntity } from '@i18n-chat/domain';
 import { DispatchService } from './dispatch.service';
@@ -14,7 +15,6 @@ import { MessageRepository } from './message.repository';
 import { RecipientRepository } from '../recipient/recipient.repository';
 import { TemplateRepository } from '../template/template.repository';
 import { TranslationService } from '../template/translation.service';
-import { LibreTranslateService } from '../translation/libre-translate.service';
 import { DispatchProducer } from './dispatch.producer';
 import { AuditService } from '../audit/audit.service';
 
@@ -130,7 +130,7 @@ type MockDeps = {
   recipientRepo: jest.Mocked<RecipientRepository>;
   templateRepo: jest.Mocked<TemplateRepository>;
   translationSvc: { resolveBody: jest.Mock; resolveTranslation: jest.Mock };
-  libretranslate: { translate: jest.Mock };
+  translationProvider: { translate: jest.Mock };
   producer: { enqueueAll: jest.Mock };
 };
 
@@ -158,7 +158,7 @@ async function buildService(
     resolveBody: jest.fn().mockResolvedValue('Bonjour'),
     resolveTranslation: jest.fn().mockResolvedValue({ body: 'Bonjour' }),
   };
-  const libretranslate = { translate: jest.fn().mockResolvedValue('Vertaald tekst') };
+  const translationProvider = { translate: jest.fn().mockResolvedValue('Vertaald tekst') };
   const producer = { enqueueAll: jest.fn().mockResolvedValue(undefined) };
 
   const module: TestingModule = await Test.createTestingModule({
@@ -169,7 +169,7 @@ async function buildService(
       { provide: RecipientRepository, useValue: recipientRepo },
       { provide: TemplateRepository, useValue: templateRepo },
       { provide: TranslationService, useValue: translationSvc },
-      { provide: LibreTranslateService, useValue: libretranslate },
+      { provide: TRANSLATION_PROVIDER, useValue: translationProvider },
       { provide: DispatchProducer, useValue: producer },
       { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
     ],
@@ -181,7 +181,7 @@ async function buildService(
     recipientRepo,
     templateRepo,
     translationSvc,
-    libretranslate,
+    translationProvider,
     producer,
   });
   return { service: module.get(DispatchService), mocks };
@@ -287,7 +287,7 @@ describe('DispatchService — createDispatch (ANONYMOUS)', () => {
 
     expect(mocks.dispatchRepo.createAnonymousTarget).toHaveBeenCalledTimes(1);
     expect(mocks.messageRepo.create).toHaveBeenCalledTimes(1);
-    expect(mocks.libretranslate.translate).toHaveBeenCalledWith('Hello', 'nl');
+    expect(mocks.translationProvider.translate).toHaveBeenCalledWith('Hello', 'nl');
   });
 });
 
